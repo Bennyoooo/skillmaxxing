@@ -1,0 +1,33 @@
+{
+  "name": "skill-maxing",
+  "version": "0.1.0",
+  "description": "A stack for installing, creating, improving, and governing AI agent skills.",
+  "type": "module",
+  "bin": {
+    "skill-maxing": "./dist/cli.js",
+    "skillmax": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "check": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "agent-skills",
+    "skills",
+    "skill-management",
+    "self-improving-agents"
+  ],
+  "author": "Benny Jiang",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}
