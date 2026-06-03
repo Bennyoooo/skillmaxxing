@@ -14,6 +14,20 @@ Initial targets:
 - Claude Code: `~/.claude/skills`, project `.claude/skills`
 - Cursor/OpenCode/Hermes-compatible paths as the adapter map grows
 
+Each agent is defined as a declarative `HostConfig`-style object:
+
+```typescript
+interface AgentAdapter {
+  name: string;
+  displayName: string;
+  cliCommand: string;                // for detection via `which`
+  globalSkillRoot: string;           // e.g., '~/.claude/skills'
+  projectSkillRoot: string;          // e.g., '.claude/skills'
+  frontmatter: FrontmatterConfig;    // per-agent field rules
+  installStrategy: 'symlink' | 'copy';
+}
+```
+
 Responsibilities:
 
 - detect installed agents;
@@ -31,11 +45,31 @@ Responsibilities:
 - parse `SKILL.md` frontmatter;
 - validate names, descriptions, triggers, tools, and mutating behavior;
 - expose searchable metadata;
-- support project, user, team, and public scopes.
+- support project, user, team, and public scopes;
+- semantic discovery: match user intent to available skills.
 
-### 3. Observation Layer
+### 3. Skill Creation Layer
 
-Collects opt-in traces that can become future skills.
+Turns candidate workflows into durable skill artifacts. Two modes:
+
+**Explicit creation (skillify):** a user describes a workflow or says "turn this into a skill." The pipeline synthesizes a complete skill directory.
+
+**In-session capture (create as you work):** after completing any task, the agent reflects on whether the workflow is reusable. If it identifies a repeated or generalizable pattern, it proposes crystallizing it as a skill. This is the Hermes-inspired post-task reflection loop — always-on, not a separate command.
+
+Artifacts:
+
+- `SKILL.md`;
+- scripts for deterministic logic;
+- resolver trigger entries;
+- unit tests;
+- eval scaffold (task set + scoring contract);
+- examples and fixtures.
+
+The quality checklist follows the spirit of gstack `skillify`: do not stop at a prompt file if the skill needs code, tests, triggers, and evaluation. Every created skill goes through the atomic stage-test-approve-commit pipeline.
+
+### 4. Observation Layer
+
+Collects opt-in traces that can become future skills. Deferred to Phase 5 because it requires external connectors and privacy infrastructure.
 
 Inputs:
 
@@ -52,40 +86,44 @@ Responsibilities:
 - cluster similar tasks;
 - produce candidate skill briefs with provenance.
 
-### 4. Skill Creation Layer
-
-Turns candidate workflows into durable skill artifacts.
-
-Artifacts:
-
-- `SKILL.md`;
-- scripts for deterministic logic;
-- resolver trigger entries;
-- unit tests;
-- integration tests;
-- LLM eval cases;
-- examples and fixtures.
-
-The quality checklist follows the spirit of `skillify`: do not stop at a prompt file if the skill needs code, tests, triggers, and evaluation.
-
 ### 5. Optimization Layer
 
 Improves skills using an evaluation-gated loop inspired by SkillOpt.
 
 Loop:
 
-1. Run target tasks with the current skill.
-2. Score outputs with deterministic checks, human review, or LLM judges.
-3. Reflect on failures and propose bounded edits.
-4. Apply candidate edits.
-5. Validate on held-out cases.
-6. Promote only if the score improves and regression checks pass.
+1. **Rollout:** run target tasks with the current skill.
+2. **Reflect:** optimizer model analyzes failures and successes.
+3. **Aggregate:** group similar failure patterns, prioritize highest-leverage edits.
+4. **Select:** rank edits, apply edit budget (bounded changes per iteration).
+5. **Update:** apply candidate edits to skill document.
+6. **Validate:** run on held-out tasks. Accept only if score improves and no regression.
+
+Key mechanisms from SkillOpt:
+
+- **Edit budget** constrains how much changes per iteration (prevents catastrophic drift).
+- **Rejected edit buffer** stores failed edits with reasons (prevents repeated bad updates).
+- **Slow updates** capture longitudinal learning in a protected region of the skill.
+- **Meta-skill memory** guides the optimizer itself across optimization runs.
+- **Two-model architecture:** optimizer model proposes edits; target model stays frozen.
 
 The deployed skill remains a compact artifact. The optimization machinery is not required at inference time.
 
-### 6. Team Governance Layer
+### 6. Confidence And Learning Layer
 
-Makes skills maintainable across teams.
+Tracks skill performance over time. Inspired by Hermes Agent's confidence tracking.
+
+Responsibilities:
+
+- count usage per skill (how many times invoked);
+- track success/failure rate;
+- surface high-confidence skills preferentially;
+- prune or flag low-confidence skills;
+- JSONL-based operational learning log per project.
+
+### 7. Team Governance Layer
+
+Makes skills maintainable across teams. Deferred to Phase 6.
 
 Responsibilities:
 
@@ -96,9 +134,9 @@ Responsibilities:
 - audit logs;
 - policy for mutating skills and external connectors.
 
-### 7. Automation Layer
+### 8. Automation Layer
 
-Runs recurring skill maintenance.
+Runs recurring skill maintenance. Deferred to Phase 7.
 
 Examples:
 
@@ -117,11 +155,48 @@ Core entities:
 - `Skill`: a versioned capability artifact.
 - `Pack`: a group of skills distributed together.
 - `Install`: a skill linked into an agent and scope.
-- `Trace`: an observed workflow input.
+- `Trace`: an observed workflow input (Phase 5+).
 - `Candidate`: a proposed skill derived from traces or chat.
 - `Eval`: a task set and scoring contract.
 - `OptimizationRun`: a sequence of candidate edits and validation outcomes.
-- `TeamPolicy`: ownership, rollout, approval, and connector rules.
+- `TeamPolicy`: ownership, rollout, approval, and connector rules (Phase 6+).
+- `UsageRecord`: per-skill invocation count and success rate.
+
+## The Core Loop
+
+```
+  Task completed
+       │
+       ▼
+  ┌─────────────┐
+  │   Reflect    │  Was this workflow reusable?
+  └──────┬──────┘
+         │ yes
+         ▼
+  ┌─────────────┐
+  │  Skillify    │  Create skill with tests, triggers, eval scaffold
+  └──────┬──────┘
+         │
+         ▼
+  ┌─────────────┐
+  │   Install    │  Symlink/copy into target agent(s)
+  └──────┬──────┘
+         │
+         ▼
+  ┌─────────────┐
+  │    Use       │  Agent finds and executes skill on future tasks
+  └──────┬──────┘
+         │
+         ▼
+  ┌─────────────┐
+  │  Optimize    │  Evaluate → reflect → edit → validate → promote
+  └──────┬──────┘
+         │
+         ▼
+  ┌─────────────┐
+  │  Confidence  │  Track usage, success rate, prune stale skills
+  └─────────────┘
+```
 
 ## Privacy And Safety Defaults
 
@@ -130,3 +205,4 @@ Core entities:
 - Secrets are redacted before indexing or model calls.
 - Team registries can require review before a skill reaches stable.
 - Mutating skills declare their tools and side effects in metadata.
+- Skills created by agents are marked `trusted: false` by default.
