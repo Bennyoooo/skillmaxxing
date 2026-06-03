@@ -1,43 +1,168 @@
 #!/usr/bin/env node
 
-const commands = new Map<string, string>([
-  ["init", "Initialize a project skill workspace and policy files."],
-  ["install", "Install curated skills into supported agents."],
-  ["observe", "Collect opt-in session/tool traces for future skill creation."],
-  ["skillify", "Turn observed workflows or chat descriptions into skills."],
-  ["optimize", "Run evaluation-gated skill improvement loops."],
-  ["team", "Manage team registries, reviews, ownership, and rollout policy."],
-  ["doctor", "Check agent integrations and local skill health."]
-]);
+import { install } from './commands/install.js';
+import { list } from './commands/list.js';
+import { remove } from './commands/remove.js';
+import { update } from './commands/update.js';
+import { init } from './commands/init.js';
+import { doctor } from './commands/doctor.js';
+import * as log from './util/log.js';
+import type { Scope } from './types.js';
+
+const VERSION = '0.1.0';
+
+function parseFlags(argv: string[]): { positional: string[]; flags: Record<string, string | true> } {
+  const positional: string[] = [];
+  const flags: Record<string, string | true> = {};
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === '--') {
+      positional.push(...argv.slice(i + 1));
+      break;
+    }
+    if (arg.startsWith('--')) {
+      const eq = arg.indexOf('=');
+      if (eq !== -1) {
+        flags[arg.substring(2, eq)] = arg.substring(eq + 1);
+      } else {
+        const next = argv[i + 1];
+        if (next && !next.startsWith('-')) {
+          flags[arg.substring(2)] = next;
+          i++;
+        } else {
+          flags[arg.substring(2)] = true;
+        }
+      }
+    } else if (arg.startsWith('-') && arg.length === 2) {
+      const shortMap: Record<string, string> = { g: 'global', a: 'agent', s: 'scope', y: 'yes', h: 'help' };
+      const long = shortMap[arg[1]] ?? arg[1];
+      const next = argv[i + 1];
+      if (next && !next.startsWith('-')) {
+        flags[long] = next;
+        i++;
+      } else {
+        flags[long] = true;
+      }
+    } else {
+      positional.push(arg);
+    }
+  }
+  return { positional, flags };
+}
 
 function printHelp(): void {
-  console.log(`skill-maxing
+  console.log(`skill-maxing v${VERSION}
 
 A stack for installing, creating, improving, and governing AI agent skills.
 
 Usage:
-  skill-maxing <command>
+  skill-maxing <command> [options]
 
 Commands:
-${Array.from(commands.entries())
-  .map(([name, description]) => `  ${name.padEnd(10)} ${description}`)
-  .join("\n")}
+  install <source>    Install skills from GitHub, URL, or local path
+  list                List installed skills
+  remove <names...>   Remove installed skills
+  update [names...]   Update installed skills to latest
+  init [name]         Create a new skill template
+  doctor              Check agent integrations and skill health
 
-This initial CLI is a roadmap scaffold. See docs/implementation-phases.md for
-the planned build sequence.`);
+Options:
+  -g, --global        Install/operate at global scope (default: project)
+  -a, --agent <name>  Target specific agent (claude, codex, cursor, opencode, hermes)
+  --copy              Force copy instead of symlink
+  --json              Output as JSON (list command)
+  -y, --yes           Skip confirmation prompts
+  -h, --help          Show help
+  --version           Show version
+
+Examples:
+  skill-maxing install owner/repo              Install skills from GitHub
+  skill-maxing install ./my-skills -g          Install local skills globally
+  skill-maxing install owner/repo -a claude    Install for Claude Code only
+  skill-maxing list                            List all installed skills
+  skill-maxing list -g                         List global skills only
+  skill-maxing remove my-skill                 Remove a skill
+  skill-maxing update                          Update all installed skills
+  skill-maxing init my-new-skill               Create a skill template
+  skill-maxing doctor                          Check health
+`);
 }
 
-const command = process.argv[2];
+async function main(): Promise<void> {
+  const { positional, flags } = parseFlags(process.argv.slice(2));
+  const command = positional[0];
 
-if (!command || command === "--help" || command === "-h") {
-  printHelp();
-  process.exit(0);
+  if (flags.version) {
+    console.log(VERSION);
+    return;
+  }
+
+  if (!command || flags.help) {
+    printHelp();
+    return;
+  }
+
+  const scope: Scope = flags.global === true ? 'global' : 'project';
+  const agentFlag = typeof flags.agent === 'string' ? flags.agent : undefined;
+  const agents = agentFlag ? agentFlag.split(',') : undefined;
+
+  try {
+    switch (command) {
+      case 'install':
+      case 'add':
+      case 'i': {
+        const source = positional[1];
+        if (!source) {
+          log.error('Usage: skill-maxing install <source>');
+          process.exit(1);
+        }
+        await install({ source, agents, scope, copy: flags.copy === true });
+        break;
+      }
+
+      case 'list':
+      case 'ls':
+        await list({ agent: agentFlag, scope: flags.global === true ? 'global' : undefined, json: flags.json === true });
+        break;
+
+      case 'remove':
+      case 'rm': {
+        const names = positional.slice(1);
+        if (names.length === 0) {
+          log.error('Usage: skill-maxing remove <skill-name> [skill-name...]');
+          process.exit(1);
+        }
+        await remove({ names, agent: agentFlag, scope: flags.global === true ? 'global' : undefined });
+        break;
+      }
+
+      case 'update':
+      case 'upgrade': {
+        const names = positional.slice(1);
+        await update({ names: names.length > 0 ? names : undefined, scope: flags.global === true ? 'global' : undefined });
+        break;
+      }
+
+      case 'init': {
+        const name = positional[1];
+        await init({ name });
+        break;
+      }
+
+      case 'doctor':
+        await doctor();
+        break;
+
+      default:
+        log.error(`Unknown command: ${command}`);
+        printHelp();
+        process.exit(1);
+    }
+  } catch (err) {
+    log.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 }
 
-if (!commands.has(command)) {
-  console.error(`Unknown command: ${command}\n`);
-  printHelp();
-  process.exit(1);
-}
-
-console.log(`${command}: planned. See docs/implementation-phases.md.`);
+main();
