@@ -4,6 +4,7 @@ import { install } from './commands/install.js';
 import { discover } from './commands/discover.js';
 import { skillify } from './commands/skillify.js';
 import { optimize, type OptimizeArgs } from './commands/optimize.js';
+import { workspace, type WorkspaceArgs } from './commands/workspace.js';
 import { list } from './commands/list.js';
 import { remove } from './commands/remove.js';
 import { update } from './commands/update.js';
@@ -67,6 +68,7 @@ Commands:
   discover <query>    Find skills by intent (curated index, repos, local)
   skillify            Create a skill from a draft (--draft/--commit/--list-drafts)
   optimize <action>   Eval-gated optimize: score|apply|gate|promote|revert
+  workspace <action>  Team registry: publish|sync|list|pool|promote
   list                List installed skills
   remove <names...>   Remove installed skills
   update [names...]   Update installed skills to latest
@@ -203,6 +205,30 @@ async function main(): Promise<void> {
           best: num('best'),
           score: num('score'),
           allowExec: flags['allow-exec'] === true,
+          json: flags.json === true,
+        });
+        break;
+      }
+
+      case 'workspace':
+      case 'ws': {
+        const action = positional[1] as WorkspaceArgs['action'];
+        if (!action) {
+          log.error('Usage: skill-maxing workspace <publish|sync|list|pool|promote> --registry <dir> [options]');
+          process.exit(1);
+        }
+        const str = (k: string): string | undefined =>
+          typeof flags[k] === 'string' ? (flags[k] as string) : undefined;
+        await workspace({
+          action,
+          registryDir: str('registry'),
+          skillDir: str('skill-dir'),
+          skillName: str('skill'),
+          channel: str('channel'),
+          by: str('by'),
+          approver: str('approver'),
+          approve: flags.approve === true,
+          score: typeof flags.score === 'string' ? Number(flags.score) : undefined,
           json: flags.json === true,
         });
         break;
