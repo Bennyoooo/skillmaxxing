@@ -3,6 +3,7 @@
 import { install } from './commands/install.js';
 import { discover } from './commands/discover.js';
 import { skillify } from './commands/skillify.js';
+import { optimize, type OptimizeArgs } from './commands/optimize.js';
 import { list } from './commands/list.js';
 import { remove } from './commands/remove.js';
 import { update } from './commands/update.js';
@@ -65,6 +66,7 @@ Commands:
   install <source>    Install skills from GitHub, URL, or local path
   discover <query>    Find skills by intent (curated index, repos, local)
   skillify            Create a skill from a draft (--draft/--commit/--list-drafts)
+  optimize <action>   Eval-gated optimize: score|apply|gate|promote|revert
   list                List installed skills
   remove <names...>   Remove installed skills
   update [names...]   Update installed skills to latest
@@ -101,7 +103,7 @@ async function main(): Promise<void> {
   const { positional, flags } = parseFlags(process.argv.slice(2));
   const command = positional[0];
 
-  if (flags.version) {
+  if (flags.version === true) {
     console.log(VERSION);
     return;
   }
@@ -166,6 +168,42 @@ async function main(): Promise<void> {
           agents,
           copy: flags.copy === true,
           force: flags.force === true,
+        });
+        break;
+      }
+
+      case 'optimize':
+      case 'opt': {
+        const action = positional[1] as OptimizeArgs['action'];
+        if (!action) {
+          log.error('Usage: skill-maxing optimize <score|apply|gate|promote|revert> [options]');
+          process.exit(1);
+        }
+        const num = (k: string): number | undefined =>
+          typeof flags[k] === 'string' ? Number(flags[k]) : undefined;
+        const str = (k: string): string | undefined =>
+          typeof flags[k] === 'string' ? (flags[k] as string) : undefined;
+        await optimize({
+          action,
+          skillName: str('skill'),
+          skillDir: str('skill-dir'),
+          editsPath: str('edits'),
+          evalPath: str('eval'),
+          rolloutsPath: str('rollouts'),
+          liveDir: str('live'),
+          candidateDir: str('candidate'),
+          version: str('version'),
+          step: num('step'),
+          total: num('total'),
+          base: num('base'),
+          min: num('min'),
+          scheduler: str('scheduler') as OptimizeArgs['scheduler'],
+          current: num('current'),
+          candidate: num('candidate'),
+          best: num('best'),
+          score: num('score'),
+          allowExec: flags['allow-exec'] === true,
+          json: flags.json === true,
         });
         break;
       }
