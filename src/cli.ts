@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { install } from './commands/install.js';
+import { discover } from './commands/discover.js';
 import { list } from './commands/list.js';
 import { remove } from './commands/remove.js';
 import { update } from './commands/update.js';
@@ -61,6 +62,7 @@ Usage:
 
 Commands:
   install <source>    Install skills from GitHub, URL, or local path
+  discover <query>    Find skills by intent (curated index, repos, local)
   list                List installed skills
   remove <names...>   Remove installed skills
   update [names...]   Update installed skills to latest
@@ -71,7 +73,11 @@ Options:
   -g, --global        Install/operate at global scope (default: project)
   -a, --agent <name>  Target specific agent (claude, codex, cursor, opencode, hermes)
   --copy              Force copy instead of symlink
-  --json              Output as JSON (list command)
+  --force             Overwrite an existing unmanaged skill of the same name
+  --repo <owner/repo> Extra repo source(s) to scan during discover (comma-sep)
+  --limit <n>         Max discover results (default 20)
+  --install <name>    Install a named result (discover command)
+  --json              Output as JSON (list/discover commands)
   -y, --yes           Skip confirmation prompts
   -h, --help          Show help
   --version           Show version
@@ -117,7 +123,31 @@ async function main(): Promise<void> {
           log.error('Usage: skill-maxing install <source>');
           process.exit(1);
         }
-        await install({ source, agents, scope, copy: flags.copy === true });
+        await install({ source, agents, scope, copy: flags.copy === true, force: flags.force === true });
+        break;
+      }
+
+      case 'discover':
+      case 'search':
+      case 'find': {
+        const query = positional.slice(1).join(' ');
+        if (!query) {
+          log.error('Usage: skill-maxing discover "<what you want>" [--repo owner/repo] [--install <name>]');
+          process.exit(1);
+        }
+        const repos = typeof flags.repo === 'string' ? flags.repo.split(',') : undefined;
+        const limit = typeof flags.limit === 'string' ? parseInt(flags.limit, 10) : undefined;
+        await discover({
+          query,
+          repos,
+          json: flags.json === true,
+          limit: Number.isNaN(limit) ? undefined : limit,
+          install: typeof flags.install === 'string' ? flags.install : undefined,
+          scope,
+          agents,
+          copy: flags.copy === true,
+          force: flags.force === true,
+        });
         break;
       }
 
