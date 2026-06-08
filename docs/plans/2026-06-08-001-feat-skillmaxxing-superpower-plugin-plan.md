@@ -1,7 +1,7 @@
 ---
 title: "feat: Skill Maxing superpower plugin — discover, create, optimize, and share skills"
 type: feat
-status: active
+status: completed
 date: 2026-06-08
 ---
 
