@@ -2,6 +2,7 @@
 
 import { install } from './commands/install.js';
 import { discover } from './commands/discover.js';
+import { skillify } from './commands/skillify.js';
 import { list } from './commands/list.js';
 import { remove } from './commands/remove.js';
 import { update } from './commands/update.js';
@@ -63,6 +64,7 @@ Usage:
 Commands:
   install <source>    Install skills from GitHub, URL, or local path
   discover <query>    Find skills by intent (curated index, repos, local)
+  skillify            Create a skill from a draft (--draft/--commit/--list-drafts)
   list                List installed skills
   remove <names...>   Remove installed skills
   update [names...]   Update installed skills to latest
@@ -143,6 +145,23 @@ async function main(): Promise<void> {
           json: flags.json === true,
           limit: Number.isNaN(limit) ? undefined : limit,
           install: typeof flags.install === 'string' ? flags.install : undefined,
+          scope,
+          agents,
+          copy: flags.copy === true,
+          force: flags.force === true,
+        });
+        break;
+      }
+
+      case 'skillify':
+      case 'create': {
+        await skillify({
+          draftPath: typeof flags.draft === 'string' ? flags.draft : undefined,
+          commit: typeof flags.commit === 'string' ? flags.commit : undefined,
+          listDrafts: flags['list-drafts'] === true,
+          discard: typeof flags.discard === 'string' ? flags.discard : undefined,
+          allowExec: flags['allow-exec'] === true,
+          forceNew: flags.new === true,
           scope,
           agents,
           copy: flags.copy === true,
