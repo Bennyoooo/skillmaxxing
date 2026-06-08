@@ -24,8 +24,14 @@ export function readGlobalLock(): GlobalLockFile {
 
 export function writeGlobalLock(lock: GlobalLockFile): void {
   ensureDir(LOCK_DIR);
+  // Sort skill keys for merge-friendliness before any team use (review C5/U13):
+  // independent additions then produce diffs that don't collide on unrelated keys.
+  const sorted: GlobalLockFile = { version: 1, skills: {} };
+  for (const key of Object.keys(lock.skills).sort()) {
+    sorted.skills[key] = lock.skills[key];
+  }
   const tmp = LOCK_PATH + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(lock, null, 2) + '\n');
+  fs.writeFileSync(tmp, JSON.stringify(sorted, null, 2) + '\n');
   fs.renameSync(tmp, LOCK_PATH);
 }
 
