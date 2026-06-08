@@ -1,0 +1,18 @@
+{
+  "name": "skill-maxing",
+  "version": "0.1.0",
+  "description": "Superpower plugin for agents: discover skills from public sources, create them from your work, optimize them through an eval-gated loop, and share them with your team.",
+  "author": "Benny Jiang",
+  "license": "MIT",
+  "skills": [
+    "skills/discover-skill",
+    "skills/create-skill",
+    "skills/optimize-skill",
+    "skills/workspace-skill"
+  ],
+  "cli": {
+    "package": "skill-maxing",
+    "minVersion": "0.1.0",
+    "bin": ["skill-maxing", "skillmax"]
+  }
+}

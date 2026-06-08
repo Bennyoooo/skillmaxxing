@@ -84,6 +84,21 @@ Sharing (Phase 6) and scanning (Phase 5) are deferred because they require exter
 
 Full details: [`docs/implementation-phases.md`](docs/implementation-phases.md).
 
+## Superpower Plugin
+
+The discover / create / optimize / share loop ships as an **agent-facing plugin** (`skill-maxing-plugin/`) backed by model-agnostic CLI primitives — see [`skill-maxing-plugin/README.md`](skill-maxing-plugin/README.md). The CLI never calls an LLM; the host agent supplies all reasoning via the skills.
+
+New CLI commands:
+
+```bash
+skill-maxing discover "code review"                  # find skills (index + repos + local), ranked
+skill-maxing skillify --draft draft.json            # create a skill (stage → smoke → commit)
+skill-maxing optimize <score|apply|gate|promote|revert>   # eval-gated improvement loop
+skill-maxing workspace <publish|sync|list|pool|promote>   # git-based team registry (Phase 2)
+```
+
+Foundations under these: a sidecar skill-state store with a `trusted:false`-by-default trust model, a collision-safe atomic promote/revert primitive, a trust-gated execution sandbox, and a shared eval format with deterministic + agent-judge scorers. See the plugin README's **Trust & threat model** for the security posture and its honest limits.
+
 ## Repository Status
 
 The implementation sequence and reference analysis are documented in:
