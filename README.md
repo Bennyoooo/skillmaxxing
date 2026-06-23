@@ -1,107 +1,152 @@
-# Skill Maxing
+<p align="center">
+  <img src="assets/hero.svg" alt="SKILLMAXXING" width="760">
+</p>
 
-Skill Maxing is a stack for making AI agent skills abundant, installable, self-improving, and manageable at team scale.
+<h1 align="center">Skill Maxing</h1>
 
-The goal is simple: when people think about AI agent skills, they should think about the Skill Maxing ecosystem.
+<p align="center">
+  <b>Self-evolving skills for your coding agent.</b><br>
+  Your agent auto-creates and auto-improves its own skills as it works — no command, no trigger, no babysitting.
+</p>
 
-## Vision
+<p align="center">
+  <a href="#-install-in-one-line"><img alt="install" src="https://img.shields.io/badge/install-one%20line-ff4d4d"></a>
+  <img alt="node" src="https://img.shields.io/badge/node-%E2%89%A520-2ec27e">
+  <img alt="deps" src="https://img.shields.io/badge/runtime%20deps-1-22b8cf">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-9b5de5">
+</p>
 
-Skill Maxing should become the default layer for:
+---
 
-- installing as many useful skills as possible across agents;
-- creating new skills as you work — the agent gets smarter with every task;
-- improving those skills through evaluation-gated optimization;
-- discovering the right skill from a pool of thousands;
-- giving teams a shared system for skill ownership, review, rollout, and maintenance.
+## Why
 
-## Product Pillars
+Every coding agent starts every task from zero. It solves the same gnarly migration, re-derives the same release flow, re-learns the same repo quirk — and forgets it the moment the session ends.
 
-1. **Skill creation maxxing**
-   Create skills as you work, whatever agent you are using. The agent reflects on completed tasks, identifies reusable patterns, and crystallizes them as skills. It gets smarter over time.
+**Skill Maxing makes the forgetting stop.** It hooks into your agent so that, after real work, the agent reflects on what it just did and crystallizes the reusable parts into a **skill** — or improves a skill it already has. Over days, your agent gets measurably better at *your* codebase. That's a self-evolving agent, and it takes one line to turn on.
 
-2. **Skill discovery maxxing**
-   Find the right skill from a pool of over 1000 skills. Semantic search by capability, agent, tools, and use case. Curated packs for immediate value.
+Inspired by the [Hermes Agent](https://github.com/NousResearch/hermes-agent) self-improvement loop, adapted to run on the hooks that Claude Code, Codex, and other agents already expose.
 
-3. **Skill evolvement maxxing**
-   Treat skill documents as trainable artifacts. Run tasks, score outcomes, propose bounded edits, validate candidates, and only promote improvements that pass gates. Every version is score-linked and reversible.
-
-4. **Skill distribution**
-   Install curated skill packs into Codex, Claude Code, Cursor, OpenCode, Hermes, and other agents from one CLI. Lock files for reproducibility. Doctor command for health.
-
-5. **Skill sharing maxxing** (later phase — requires external infra)
-   Share skills with your team per your approval. Team knowledge compounds. Private registries, release channels, review flows, audit trails.
-
-6. **Skills scanning maxxing** (later phase — requires rigorous design)
-   Scan your tools, email, code, chat, and discover skillable traces. Create skills from observed workflow patterns automatically.
-
-## Reference Systems Studied
-
-- **Hermes Agent** ([repo](https://github.com/NousResearch/hermes-agent))
-  The "create skills as you work" reference. Post-task reflection loop, procedural memory, confidence tracking, retrieval-augmented execution, cron/webhook routines, model-agnostic execution.
-
-- **Microsoft SkillOpt** ([repo](https://github.com/microsoft/SkillOpt))
-  The skill optimization reference. Skill documents as trainable state, five-phase optimization loop, edit budgets, rejected edit buffer, validation gates, meta-skill memory.
-
-- **Vercel Labs `skills`** ([repo](https://github.com/vercel-labs/skills))
-  The installer reference. `npx` distribution, GitHub/local source parsing, cross-agent install targets, lock files, doctor command, path sanitization.
-
-- **gbrain `skillify` (gstack)** (local: `/Users/bennyjiang/Desktop/projects/skillmaxxing/gstack`)
-  The quality reference. 11-step atomic stage-test-approve-commit pipeline, HostConfig cross-agent adapter system, JSONL operational learning, quality checklist with receipts.
-
-- **Aria Labs** (local: `/Users/bennyjiang/Desktop/projects/aria_agents`)
-  Team sharing reference. Not yet inspected (macOS permission block). Expected: team/workspace skill sharing, chat-driven creation, scan-based creation.
-
-## Proposed CLI
+## ⚡ Install in one line
 
 ```bash
-npx skill-maxing init
-npx skill-maxing install --pack core --agent codex --global
-npx skill-maxing discover "code review"
-npx skill-maxing skillify "turn my weekly release workflow into a skill"
-npx skill-maxing optimize skills/release-notes
-npx skill-maxing doctor
-npx skill-maxing learn                           # show what the agent has learned
-npx skill-maxing team publish skills/release-notes --channel beta  # later phase
-npx skill-maxing observe --from codex --since 7d                   # later phase
+npx skill-maxing@latest plugin install
 ```
 
-## Implementation Phases (reordered)
+That's it. Restart your agent session and Skill Maxing is live — **you never have to invoke anything.**
 
-| Phase | Name | Status | Key reference |
-|-------|------|--------|---------------|
-| 0 | Repo foundation | Done | — |
-| 1 | Cross-agent installer | Next | Vercel skills, gstack HostConfig |
-| 2 | Curated packs + discovery | — | — |
-| 3a | Skillify pipeline | — | gstack skillify |
-| 3b | In-session skill capture | — | Hermes Agent |
-| 4 | Evaluation-gated optimization | — | SkillOpt |
-| 5 | Observation / workflow mining | Deferred | Hermes routines |
-| 6 | Team registry / governance | Deferred | Aria Labs |
-| 7 | Automation | — | Hermes routines |
-| 8 | Public ecosystem | — | — |
-
-Sharing (Phase 6) and scanning (Phase 5) are deferred because they require external infrastructure and more rigorous design. The core loop ships first.
-
-Full details: [`docs/implementation-phases.md`](docs/implementation-phases.md).
-
-## Superpower Plugin
-
-The discover / create / optimize / share loop ships as an **agent-facing plugin** (`skill-maxing-plugin/`) backed by model-agnostic CLI primitives — see [`skill-maxing-plugin/README.md`](skill-maxing-plugin/README.md). The CLI never calls an LLM; the host agent supplies all reasoning via the skills.
-
-New CLI commands:
+<details>
+<summary>Claude Code, the native way</summary>
 
 ```bash
-skill-maxing discover "code review"                  # find skills (index + repos + local), ranked
-skill-maxing skillify --draft draft.json            # create a skill (stage → smoke → commit)
-skill-maxing optimize <score|apply|gate|promote|revert>   # eval-gated improvement loop
-skill-maxing workspace <publish|sync|list|pool|promote>   # git-based team registry (Phase 2)
+/plugin marketplace add Bennyoooo/skill-maxing
+/plugin install skill-maxing
+```
+</details>
+
+<details>
+<summary>Codex / other agents</summary>
+
+```bash
+npx skill-maxing@latest plugin install --agent codex
 ```
 
-Foundations under these: a sidecar skill-state store with a `trusted:false`-by-default trust model, a collision-safe atomic promote/revert primitive, a trust-gated execution sandbox, and a shared eval format with deterministic + agent-judge scorers. See the plugin README's **Trust & threat model** for the security posture and its honest limits.
+Codex has no programmatic stop hook, so self-evolution runs **in-session** via standing guidance written to `AGENTS.md`. Claude Code gets the full background loop below.
+</details>
 
-## Repository Status
+Turn it off any time:
 
-The implementation sequence and reference analysis are documented in:
-- [`docs/implementation-phases.md`](docs/implementation-phases.md) — phased plan
-- [`docs/architecture.md`](docs/architecture.md) — system layers
-- [`docs/reference-notes.md`](docs/reference-notes.md) — deep analysis of reference repos
+```bash
+npx skill-maxing plugin uninstall      # check state with: plugin status
+```
+
+## 🧠 How it works
+
+Skill Maxing installs three hooks. You do nothing — the loop runs itself.
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  SessionStart   →  inject standing guidance                    │
+│                    "crystallize reusable work; fix stale skills"│
+│                                                                │
+│  PostToolUse    →  count substantive tool calls this session   │
+│                                                                │
+│  Stop (task done) → enough work? fork a background reflector:   │
+│                     review the transcript and, if warranted,    │
+│                     create ONE new skill or improve an existing │
+│                     one — autonomously, trusted:false           │
+└──────────────────────────────────────────────────────────────┘
+```
+
+This mirrors Hermes' three layers:
+
+| Hermes | Skill Maxing |
+|--------|--------------|
+| Always-on system-prompt nudge | **SessionStart** hook injects skill-creation guidance |
+| Background review every N iterations | **PostToolUse** counter + **Stop** hook fork a headless reflector after a threshold of real work |
+| Provenance-gated curation | New/changed skills are recorded **`trusted: false`** until you approve them |
+
+Two key Hermes ideas carry straight over: the reflector **prefers updating an existing skill over creating a near-duplicate**, and it is **conservative** — most sessions produce no skill at all.
+
+### Two modes
+
+| Mode | What happens on a substantial session | Pick it when |
+|------|----------------------------------------|--------------|
+| `auto` *(default)* | A **background** agent (`claude -p`, restricted to skill tools) reflects and writes/updates a skill while you keep working | You want truly hands-off self-evolution |
+| `nudge` | The agent is reminded to crystallize the workflow itself, in-session | You want zero extra processes / full visibility |
+
+```bash
+npx skill-maxing plugin install --mode nudge --threshold 12
+```
+
+The background reflector is **recursion-guarded** (it can never trigger itself) and **detached** (it never blocks your session). Every skill it writes is `trusted: false` and never auto-executes until you grant trust.
+
+## 🔧 The two superpowers
+
+Everything above is built on two CLI primitives the reflector (or you) can call directly. The CLI is **model-agnostic** — it does the deterministic work; your agent supplies the reasoning.
+
+**Create** — turn a workflow into a tested skill:
+
+```bash
+skill-maxing skillify --draft draft.json    # stage → smoke-test → review → --commit
+```
+
+**Improve** — make an existing skill measurably better, safely:
+
+```bash
+skill-maxing optimize <score|apply|gate|promote|revert>
+```
+
+`optimize` is an **eval-gated** loop (rollout → reflect → bounded edit → validate): a candidate is promoted only on a strict score win with no regression, every version is retained, and any change is reversible.
+
+## 🛟 Trust & safety
+
+- **Untrusted by default.** Auto-created and improved skills are `trusted: false`; the sandbox refuses to run their code without your explicit `--allow-exec`.
+- **Reversible.** Promotions are atomic and every prior version is retained — revert any time.
+- **No surprise execution.** The background reflector writes skills; it does not run untrusted code or touch your project source.
+
+## 🗺️ Roadmap
+
+| Capability | Status |
+|------------|--------|
+| Auto-create skills (hook-driven) | ✅ v1 |
+| Auto-improve skills (eval-gated) | ✅ v1 |
+| Cross-agent install (Claude Code, Codex) | ✅ v1 |
+| Discover skills from public sources | 🧰 CLI ready — landing in the plugin next |
+| Team workspace: share + collaboratively optimize | 🧰 CLI ready — landing in the plugin next |
+
+Discovery and team sharing already exist as CLI commands (`skill-maxing discover`, `skill-maxing workspace`); they're intentionally held out of the v1 plugin surface to keep the install dead-simple.
+
+## 🛠️ Develop
+
+```bash
+npm install
+npm run build      # tsc -> dist/
+npm test           # node:test, ~90 tests
+node scripts/gen-hero.mjs   # regenerate the hero
+```
+
+Zero runtime dependencies beyond `yaml`. ESM, Node ≥ 20.
+
+## License
+
+MIT

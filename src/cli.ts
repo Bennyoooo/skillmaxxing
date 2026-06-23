@@ -5,6 +5,7 @@ import { discover } from './commands/discover.js';
 import { skillify } from './commands/skillify.js';
 import { optimize, type OptimizeArgs } from './commands/optimize.js';
 import { workspace, type WorkspaceArgs } from './commands/workspace.js';
+import { plugin, type PluginArgs } from './commands/plugin.js';
 import { list } from './commands/list.js';
 import { remove } from './commands/remove.js';
 import { update } from './commands/update.js';
@@ -64,6 +65,7 @@ Usage:
   skill-maxing <command> [options]
 
 Commands:
+  plugin <action>     Self-evolving plugin: install|uninstall|status (hooks, no trigger)
   install <source>    Install skills from GitHub, URL, or local path
   discover <query>    Find skills by intent (curated index, repos, local)
   skillify            Create a skill from a draft (--draft/--commit/--list-drafts)
@@ -236,6 +238,28 @@ async function main(): Promise<void> {
               ? Number(flags.score)
               : undefined,
           json: flags.json === true,
+        });
+        break;
+      }
+
+      case 'plugin': {
+        const action = positional[1] as PluginArgs['action'];
+        if (!action) {
+          log.error('Usage: skill-maxing plugin <install|uninstall|status> [--agent claude|codex] [--mode auto|nudge] [--threshold N] [--project]');
+          process.exit(1);
+        }
+        const pAgent = agentFlag === 'codex' ? 'codex' : agentFlag === 'claude' ? 'claude' : undefined;
+        const pMode = flags.mode === 'nudge' ? 'nudge' : flags.mode === 'auto' ? 'auto' : undefined;
+        const pThreshold =
+          typeof flags.threshold === 'string' && !Number.isNaN(Number(flags.threshold))
+            ? Number(flags.threshold)
+            : undefined;
+        await plugin({
+          action,
+          agent: pAgent,
+          mode: pMode,
+          threshold: pThreshold,
+          project: flags.project === true,
         });
         break;
       }

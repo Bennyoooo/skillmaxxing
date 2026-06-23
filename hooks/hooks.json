@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "npx -y skill-maxing plugin guidance" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "npx -y skill-maxing plugin on-tool" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "npx -y skill-maxing plugin on-stop --agent claude --mode auto --threshold 10" }
+        ]
+      }
+    ]
+  }
+}
