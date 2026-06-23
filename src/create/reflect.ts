@@ -6,8 +6,10 @@
  * P7f) turning it into a skill via the prefer-update-over-create path.
  */
 
+import { jaccard } from '../util/similarity.js';
+
 export interface WorkflowRecord {
-  /** Ordered step signatures — e.g. tool names or normalized commands. */
+  /** Ordered step signatures -- e.g. tool names or normalized commands. */
   steps: string[];
 }
 
@@ -26,12 +28,7 @@ function stepSet(steps: string[]): Set<string> {
 
 /** Jaccard similarity of two workflows' step sets (order-insensitive). */
 export function similarity(a: WorkflowRecord, b: WorkflowRecord): number {
-  const sa = stepSet(a.steps);
-  const sb = stepSet(b.steps);
-  if (sa.size === 0 || sb.size === 0) return 0;
-  let inter = 0;
-  for (const t of sa) if (sb.has(t)) inter++;
-  return inter / (sa.size + sb.size - inter);
+  return jaccard(stepSet(a.steps), stepSet(b.steps));
 }
 
 export interface RepeatCluster {

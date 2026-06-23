@@ -1,8 +1,12 @@
 import { publish, sync, listRegistry } from '../workspace/registry.js';
 import { reviewPromote, poolEval } from '../workspace/collab.js';
 import { isValidChannel } from '../workspace/channels.js';
+import { stripTerminalEscapes } from '../util/sanitize.js';
 import type { Channel } from '../types.js';
 import * as log from '../util/log.js';
+
+/** Untrusted registry fields are sanitized before display (review: ANSI injection). */
+const clean = stripTerminalEscapes;
 
 export interface WorkspaceArgs {
   action: 'publish' | 'sync' | 'list' | 'pool' | 'promote';
@@ -61,7 +65,7 @@ export async function workspace(args: WorkspaceArgs): Promise<void> {
       }
       log.heading(`Synced ${synced.length} skill(s)`);
       for (const s of synced) {
-        log.info(`  ${s.name} [${s.channel}]${s.collided ? ` (namespaced as ${s.id} — local skill preserved)` : ''}`);
+        log.info(`  ${clean(s.name)} [${clean(s.channel)}]${s.collided ? ` (namespaced as ${clean(s.id)} -- local skill preserved)` : ''}`);
       }
       log.info('Synced skills are trusted:false and live under ~/.skillmax/workspace; install or optimize from there.');
       return;
@@ -79,7 +83,7 @@ export async function workspace(args: WorkspaceArgs): Promise<void> {
       }
       log.table([
         ['name', 'channel', 'version', 'by'],
-        ...entries.map((e) => [e.name, e.channel, e.version, e.publishedBy]),
+        ...entries.map((e) => [clean(e.name), clean(e.channel), clean(e.version), clean(e.publishedBy)]),
       ]);
       return;
     }

@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
+import { createHash } from 'node:crypto';
 import type { SkillState, SkillOrigin, ScoreEntry, SkillLifecycle } from '../types.js';
 import { ensureDir } from '../util/fs.js';
 
@@ -15,9 +16,12 @@ export const MAX_SCORE_HISTORY = 20;
  * different origins do not share one sidecar file — see plan U3 / review A5.
  */
 export function stateKey(identity: string): string {
-  return (
-    identity.replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._]+/, '') || 'unnamed'
-  );
+  const safe = identity.replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._]+/, '') || 'unnamed';
+  // Append a short hash of the RAW identity so two identities that sanitize to
+  // the same string (e.g. "team/a" and "team_a") never share one sidecar file —
+  // otherwise their trust flag and score history would silently merge (review A5).
+  const hash = createHash('sha256').update(identity).digest('hex').slice(0, 8);
+  return `${safe}-${hash}`;
 }
 
 function statePath(identity: string): string {

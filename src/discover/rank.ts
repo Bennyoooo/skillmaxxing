@@ -1,4 +1,5 @@
 import type { DiscoveryCandidate } from './types.js';
+import { tokenize } from '../util/similarity.js';
 
 export interface RankedCandidate extends DiscoveryCandidate {
   score: number;
@@ -8,16 +9,9 @@ export interface RankedCandidate extends DiscoveryCandidate {
 
 /**
  * Deterministic lexical + metadata ranking. Embeddings are intentionally NOT
- * abstracted here yet (review SG2: a one-implementation interface is YAGNI) — a
+ * abstracted here yet (review SG2: a one-implementation interface is YAGNI) -- a
  * ranking strategy can be added when a second implementation actually exists.
  */
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-}
-
 function scoreCandidate(intentTokens: string[], c: DiscoveryCandidate): number {
   const nameLower = c.name.toLowerCase();
   const nameTokens = new Set(tokenize(c.name));

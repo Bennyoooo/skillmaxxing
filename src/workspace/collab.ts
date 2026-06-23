@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { ensureDir, removeDir, copyDir, fileExists } from '../util/fs.js';
+import { ensureValidName } from '../util/collision.js';
 import { readRegistry, writeRegistry } from './registry.js';
 import type { Channel } from '../types.js';
 
@@ -66,6 +67,12 @@ export function reviewPromote(registryDir: string, params: PromoteParams): Promo
   if (!params.approver) {
     return { ok: false, reason: 'an approver is required for promotion' };
   }
+  // Validate the skill name before it is joined into filesystem paths (review:
+  // path traversal via params.skill).
+  const nameCheck = ensureValidName(params.skill);
+  if (!nameCheck.ok) {
+    return { ok: false, reason: nameCheck.reason };
+  }
 
   const idx = readRegistry(registryDir);
   const candidates = idx.skills.filter((e) => e.name === params.skill);
@@ -88,6 +95,13 @@ export function reviewPromote(registryDir: string, params: PromoteParams): Promo
       ok: false,
       reason: `conflict: ${params.skill} is already ${targetExisting.version} in ${params.toChannel} (source ${source.version}); resolve manually`,
     };
+  }
+
+  // Already in the target channel (only a target-channel entry exists): nothing
+  // to copy. Short-circuit BEFORE any removeDir/copyDir — otherwise src === dst
+  // and removeDir(dst) would delete the only copy (review: self-channel data loss).
+  if (source.channel === params.toChannel) {
+    return { ok: true };
   }
 
   const srcDir = path.join(registryDir, 'skills', source.channel, params.skill);

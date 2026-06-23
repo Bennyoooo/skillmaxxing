@@ -53,12 +53,22 @@ export function applyEdit(content: string, edit: Edit): ApplyResult {
   if (!edit.target) {
     return { ok: false, content, reason: `${edit.op} requires a target` };
   }
-  const idx = content.indexOf(edit.target);
-  if (idx === -1) {
-    return { ok: false, content, reason: `target not found: ${truncate(edit.target)}` };
+  // Find the first occurrence OUTSIDE the protected slow-update region. An anchor
+  // that also appears inside the region must not cause the whole edit to be
+  // dropped when a valid occurrence exists outside it (review: dual-occurrence).
+  let idx = content.indexOf(edit.target);
+  while (idx !== -1 && isProtectedIndex(content, idx)) {
+    idx = content.indexOf(edit.target, idx + 1);
   }
-  if (isProtectedIndex(content, idx)) {
-    return { ok: false, content, reason: 'target is within the protected slow-update region' };
+  if (idx === -1) {
+    const anywhere = content.includes(edit.target);
+    return {
+      ok: false,
+      content,
+      reason: anywhere
+        ? 'target only occurs within the protected slow-update region'
+        : `target not found: ${truncate(edit.target)}`,
+    };
   }
 
   if (edit.op === 'replace') {

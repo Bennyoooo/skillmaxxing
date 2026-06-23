@@ -25,6 +25,13 @@ export function atomicReplaceDir(target: string, source: string): void {
   if (!fs.existsSync(source)) {
     throw new Error(`source directory not found: ${source}`);
   }
+  // Refuse to replace a symlink: renaming the link (not its target) would leave
+  // the real upstream skill untouched and silently break the install topology
+  // (review: optimize/promote against a symlinked install dir). The caller must
+  // pass the resolved managed-copy directory.
+  if (fs.existsSync(target) && fs.lstatSync(target).isSymbolicLink()) {
+    throw new Error(`refusing to replace a symlink: ${target} (pass the resolved skill directory)`);
+  }
   const parent = path.dirname(target);
   ensureDir(parent);
   const base = path.basename(target);

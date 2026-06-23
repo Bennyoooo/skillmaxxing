@@ -4,6 +4,8 @@ import * as os from 'node:os';
 import { ensureDir, copyDir, fileExists, removeDir } from '../util/fs.js';
 import { readSkillMeta } from '../util/frontmatter.js';
 import { ensureValidName, namespacedName } from '../util/collision.js';
+import { isPathSafe } from '../util/sanitize.js';
+import { isValidChannel } from './channels.js';
 import { ensureState, loadState, saveState } from '../state/store.js';
 import type { Channel } from '../types.js';
 
@@ -38,7 +40,18 @@ export function readRegistry(registryDir: string): RegistryIndex {
   try {
     const data = JSON.parse(fs.readFileSync(indexPath(registryDir), 'utf-8'));
     if (!data || !Array.isArray(data.skills)) return { version: 1, skills: [] };
-    return data as RegistryIndex;
+    // registry.json is an UNTRUSTED shared file. Drop entries whose name or
+    // channel is invalid before any entry value is joined into a filesystem path
+    // (review: path traversal via crafted entry.name / entry.channel in sync()).
+    const skills = (data.skills as RegistryEntry[]).filter(
+      (e) =>
+        e &&
+        typeof e.name === 'string' &&
+        ensureValidName(e.name).ok &&
+        typeof e.channel === 'string' &&
+        isValidChannel(e.channel),
+    );
+    return { version: 1, skills };
   } catch {
     return { version: 1, skills: [] };
   }
@@ -136,6 +149,8 @@ export function sync(registryDir: string, opts: SyncOptions): SyncedSkill[] {
     const id = collided ? namespacedName(registryId, entry.name) : entry.name;
 
     const dir = path.join(WORKSPACE_DIR, registryId, entry.name);
+    // Defense-in-depth: never remove/write outside the managed workspace area.
+    if (!isPathSafe(WORKSPACE_DIR, dir)) continue;
     removeDir(dir);
     ensureDir(path.dirname(dir));
     copyDir(src, dir);

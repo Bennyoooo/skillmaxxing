@@ -181,8 +181,11 @@ async function main(): Promise<void> {
           log.error('Usage: skill-maxing optimize <score|apply|gate|promote|revert> [options]');
           process.exit(1);
         }
-        const num = (k: string): number | undefined =>
-          typeof flags[k] === 'string' ? Number(flags[k]) : undefined;
+        const num = (k: string): number | undefined => {
+          if (typeof flags[k] !== 'string') return undefined;
+          const n = Number(flags[k]);
+          return Number.isNaN(n) ? undefined : n; // a non-numeric flag is not a silent 0/NaN
+        };
         const str = (k: string): string | undefined =>
           typeof flags[k] === 'string' ? (flags[k] as string) : undefined;
         await optimize({
@@ -228,7 +231,10 @@ async function main(): Promise<void> {
           by: str('by'),
           approver: str('approver'),
           approve: flags.approve === true,
-          score: typeof flags.score === 'string' ? Number(flags.score) : undefined,
+          score:
+            typeof flags.score === 'string' && !Number.isNaN(Number(flags.score))
+              ? Number(flags.score)
+              : undefined,
           json: flags.json === true,
         });
         break;
