@@ -1,0 +1,41 @@
+import type { Edit } from './diff.js';
+
+/** Stable fingerprint for an edit (op + target + content). */
+export function editFingerprint(edit: Edit): string {
+  return `${edit.op} ${edit.target ?? ''} ${edit.content ?? ''}`;
+}
+
+/**
+ * Rejected-edit buffer (KTD14): remembers edits that failed the gate so they are
+ * not re-proposed within an epoch. This is what prevents the optimizer from
+ * oscillating on the same circular edits -- a mechanism most systems omit.
+ */
+export class RejectedEditBuffer {
+  private readonly seen = new Set<string>();
+
+  add(edit: Edit): void {
+    this.seen.add(editFingerprint(edit));
+  }
+
+  addAll(edits: Edit[]): void {
+    for (const e of edits) this.add(e);
+  }
+
+  has(edit: Edit): boolean {
+    return this.seen.has(editFingerprint(edit));
+  }
+
+  /** Return only edits not already in the buffer. */
+  filterNew(edits: Edit[]): Edit[] {
+    return edits.filter((e) => !this.has(e));
+  }
+
+  /** Reset at an epoch boundary. */
+  reset(): void {
+    this.seen.clear();
+  }
+
+  get size(): number {
+    return this.seen.size;
+  }
+}

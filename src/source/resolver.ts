@@ -12,6 +12,23 @@ export interface ResolvedSkill {
   isTemp: boolean;
 }
 
+/**
+ * Defense-in-depth guard for directory entries read from untrusted cloned repos
+ * (review S5): reject names that are path-traversal or separator-bearing before
+ * joining them into a filesystem path. readdir normally returns plain segments,
+ * but a maliciously crafted archive should never escape the scan root.
+ */
+export function isSafeEntryName(name: string): boolean {
+  return (
+    name !== '' &&
+    name !== '.' &&
+    name !== '..' &&
+    !name.includes('/') &&
+    !name.includes('\\') &&
+    !name.includes('\0')
+  );
+}
+
 export async function resolveSource(source: ParsedSource): Promise<ResolvedSkill[]> {
   if (source.type === 'local') {
     return resolveLocal(source.localPath!);
@@ -36,6 +53,7 @@ function resolveLocal(localPath: string): ResolvedSkill[] {
   const skills: ResolvedSkill[] = [];
   for (const entry of fs.readdirSync(resolved, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
+    if (!isSafeEntryName(entry.name)) continue;
     const sub = path.join(resolved, entry.name, 'SKILL.md');
     if (!fs.existsSync(sub)) continue;
     const content = fs.readFileSync(sub, 'utf-8');
@@ -76,6 +94,7 @@ async function resolveRemote(source: ParsedSource): Promise<ResolvedSkill[]> {
     const skills: ResolvedSkill[] = [];
     for (const entry of fs.readdirSync(searchDir, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
+      if (!isSafeEntryName(entry.name)) continue;
       const sub = path.join(searchDir, entry.name, 'SKILL.md');
       if (!fs.existsSync(sub)) continue;
       const content = fs.readFileSync(sub, 'utf-8');

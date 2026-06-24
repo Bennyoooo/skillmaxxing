@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "_note": "Starter seed for the curated skill index. Populate with verified public skills after auditing the ecosystem (plan open item; review P5f/A9). The discover command degrades to local + explicit repo sources when this is empty.",
+  "skills": []
+}

@@ -162,6 +162,8 @@ Core entities:
 - `TeamPolicy`: ownership, rollout, approval, and connector rules (Phase 6+).
 - `UsageRecord`: per-skill invocation count and success rate.
 
+> **Implementation note.** The entities above are the design vocabulary. As built, per-skill state (`origin`, `trusted`, `version`, `lifecycle`, `scoreHistory`, `channel`) lives in a sidecar store at `~/.skillmax/state/<id>.json` — keyed by an origin-namespaced identity, kept outside the content-hashed skill dir so reproducible-install hashes don't churn. `Install` is represented by the existing lock files; `Eval`/`OptimizationRun` map to the eval manifest + optimize engine; the workspace registry is a git repo with a `registry.json` index. `Pack`, `Trace`, and `Candidate` remain design intent.
+
 ## The Core Loop
 
 ```

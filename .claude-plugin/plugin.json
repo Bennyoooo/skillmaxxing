@@ -1,0 +1,9 @@
+{
+  "name": "skill-maxing",
+  "version": "0.1.0",
+  "description": "Self-evolving skills for your coding agent. Auto-creates and auto-improves skills as you work — no trigger needed.",
+  "author": { "name": "Benny Jiang" },
+  "homepage": "https://github.com/Bennyoooo/skill-maxing",
+  "license": "MIT",
+  "keywords": ["skills", "self-improving", "agent", "hooks", "claude-code"]
+}
