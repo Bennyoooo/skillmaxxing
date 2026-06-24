@@ -2,7 +2,7 @@
   <img src="assets/hero.svg" alt="SKILLMAXXING" width="760">
 </p>
 
-<h1 align="center">Skill Maxing</h1>
+<h1 align="center">SkillMaxxing</h1>
 
 <p align="center">
   <b>Self-evolving skills for your coding agent.</b><br>
