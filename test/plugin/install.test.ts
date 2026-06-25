@@ -30,7 +30,7 @@ const settingsPath = () => path.join(tmpHome, '.claude', 'settings.json');
 const readSettings = () => JSON.parse(fs.readFileSync(settingsPath(), 'utf-8'));
 function ownsHook(groups: any[]): boolean {
   return (groups ?? []).some((g: any) =>
-    (g.hooks ?? []).some((h: any) => typeof h.command === 'string' && h.command.includes('skill-maxing plugin')),
+    (g.hooks ?? []).some((h: any) => typeof h.command === 'string' && h.command.includes('skillmaxxing plugin')),
   );
 }
 
@@ -85,7 +85,7 @@ test('reinstall is idempotent (no duplicate hook groups)', async () => {
   await plugin.plugin({ action: 'install', agent: 'claude', mode: 'auto' });
   const s = readSettings();
   const ourSessionGroups = s.hooks.SessionStart.filter((g: any) =>
-    g.hooks.some((h: any) => h.command.includes('skill-maxing plugin')),
+    g.hooks.some((h: any) => h.command.includes('skillmaxxing plugin')),
   );
   assert.equal(ourSessionGroups.length, 1);
 });
@@ -93,7 +93,7 @@ test('reinstall is idempotent (no duplicate hook groups)', async () => {
 test('reflect prompt names the transcript and recursion guard reads env', () => {
   const prompt = reflect.buildReflectionPrompt('/tmp/session.jsonl');
   assert.match(prompt, /\/tmp\/session\.jsonl/);
-  assert.match(prompt, /skill-maxing/);
+  assert.match(prompt, /skillmaxxing/);
   assert.equal(reflect.isReflecting(), false);
   process.env[reflect.REFLECT_ENV] = '1';
   assert.equal(reflect.isReflecting(), true);

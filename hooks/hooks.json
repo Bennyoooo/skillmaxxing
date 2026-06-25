@@ -3,7 +3,7 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "npx -y skill-maxing plugin guidance" }
+          { "type": "command", "command": "npx -y skillmaxxing plugin guidance" }
         ]
       }
     ],
@@ -11,14 +11,14 @@
       {
         "matcher": "*",
         "hooks": [
-          { "type": "command", "command": "npx -y skill-maxing plugin on-tool" }
+          { "type": "command", "command": "npx -y skillmaxxing plugin on-tool" }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "npx -y skill-maxing plugin on-stop --agent claude --mode auto --threshold 10" }
+          { "type": "command", "command": "npx -y skillmaxxing plugin on-stop --agent claude --mode auto --threshold 10" }
         ]
       }
     ]
