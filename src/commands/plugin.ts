@@ -19,12 +19,16 @@ export interface PluginArgs {
 }
 
 const DEFAULT_THRESHOLD = 10;
-const HOOK_TAG = 'skill-maxing plugin'; // identifies hooks we own, for clean uninstall
+
+/** Identify hooks we own (any of our bin names), keyed on our unique subcommands. */
+function isOurHook(command: unknown): boolean {
+  return typeof command === 'string' && /\bplugin (guidance|on-tool|on-stop)\b/.test(command);
+}
 
 // ---------- shared helpers ----------
 
 function resolveCli(): string {
-  for (const bin of ['skill-maxing', 'skillmax']) {
+  for (const bin of ['skillmaxxing', 'skill-maxing', 'skillmax']) {
     try {
       execSync(`command -v ${bin}`, { stdio: 'ignore' });
       return bin;
@@ -32,7 +36,7 @@ function resolveCli(): string {
       /* not on PATH */
     }
   }
-  return 'npx -y skill-maxing';
+  return 'npx -y skillmaxxing';
 }
 
 function readStdin(): Record<string, unknown> {
@@ -73,9 +77,7 @@ interface HookEntry {
 /** Drop any hook groups in `list` that belong to skill-maxing. */
 function stripOurs(list: HookEntry[] | undefined): HookEntry[] {
   if (!Array.isArray(list)) return [];
-  return list.filter(
-    (g) => !(g.hooks ?? []).some((h) => typeof h.command === 'string' && h.command.includes(HOOK_TAG)),
-  );
+  return list.filter((g) => !(g.hooks ?? []).some((h) => isOurHook(h.command)));
 }
 
 // ---------- install / uninstall / status ----------
@@ -191,7 +193,7 @@ function status(args: PluginArgs): void {
   const owned: string[] = [];
   for (const k of ['SessionStart', 'PostToolUse', 'Stop']) {
     const groups: HookEntry[] = settings.hooks?.[k] ?? [];
-    if (groups.some((g) => (g.hooks ?? []).some((h) => h.command?.includes(HOOK_TAG)))) owned.push(k);
+    if (groups.some((g) => (g.hooks ?? []).some((h) => isOurHook(h.command)))) owned.push(k);
   }
   if (owned.length > 0) {
     log.success(`Skill Maxing is active for Claude Code: ${owned.join(', ')} hooks (${file}).`);

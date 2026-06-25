@@ -29,7 +29,7 @@ Inspired by the [Hermes Agent](https://github.com/NousResearch/hermes-agent) sel
 ## ⚡ Install in one line
 
 ```bash
-npx skill-maxing@latest plugin install
+npx skillmaxxing@latest plugin install
 ```
 
 That's it. Restart your agent session and Skill Maxing is live — **you never have to invoke anything.**
@@ -38,8 +38,8 @@ That's it. Restart your agent session and Skill Maxing is live — **you never h
 <summary>Claude Code, the native way</summary>
 
 ```bash
-/plugin marketplace add Bennyoooo/skill-maxing
-/plugin install skill-maxing
+/plugin marketplace add Bennyoooo/skillmaxxing
+/plugin install skillmaxxing
 ```
 </details>
 
@@ -47,7 +47,7 @@ That's it. Restart your agent session and Skill Maxing is live — **you never h
 <summary>Codex / other agents</summary>
 
 ```bash
-npx skill-maxing@latest plugin install --agent codex
+npx skillmaxxing@latest plugin install --agent codex
 ```
 
 Codex has no programmatic stop hook, so self-evolution runs **in-session** via standing guidance written to `AGENTS.md`. Claude Code gets the full background loop below.
@@ -56,7 +56,7 @@ Codex has no programmatic stop hook, so self-evolution runs **in-session** via s
 Turn it off any time:
 
 ```bash
-npx skill-maxing plugin uninstall      # check state with: plugin status
+npx skillmaxxing plugin uninstall      # check state with: plugin status
 ```
 
 ## 🧠 How it works
@@ -95,7 +95,7 @@ Two key Hermes ideas carry straight over: the reflector **prefers updating an ex
 | `nudge` | The agent is reminded to crystallize the workflow itself, in-session | You want zero extra processes / full visibility |
 
 ```bash
-npx skill-maxing plugin install --mode nudge --threshold 12
+npx skillmaxxing plugin install --mode nudge --threshold 12
 ```
 
 The background reflector is **recursion-guarded** (it can never trigger itself) and **detached** (it never blocks your session). Every skill it writes is `trusted: false` and never auto-executes until you grant trust.
@@ -107,13 +107,13 @@ Everything above is built on two CLI primitives the reflector (or you) can call 
 **Create** — turn a workflow into a tested skill:
 
 ```bash
-skill-maxing skillify --draft draft.json    # stage → smoke-test → review → --commit
+skillmaxxing skillify --draft draft.json    # stage → smoke-test → review → --commit
 ```
 
 **Improve** — make an existing skill measurably better, safely:
 
 ```bash
-skill-maxing optimize <score|apply|gate|promote|revert>
+skillmaxxing optimize <score|apply|gate|promote|revert>
 ```
 
 `optimize` is an **eval-gated** loop (rollout → reflect → bounded edit → validate): a candidate is promoted only on a strict score win with no regression, every version is retained, and any change is reversible.
@@ -134,7 +134,7 @@ skill-maxing optimize <score|apply|gate|promote|revert>
 | Discover skills from public sources | 🧰 CLI ready — landing in the plugin next |
 | Team workspace: share + collaboratively optimize | 🧰 CLI ready — landing in the plugin next |
 
-Discovery and team sharing already exist as CLI commands (`skill-maxing discover`, `skill-maxing workspace`); they're intentionally held out of the v1 plugin surface to keep the install dead-simple.
+Discovery and team sharing already exist as CLI commands (`skillmaxxing discover`, `skillmaxxing workspace`); they're intentionally held out of the v1 plugin surface to keep the install dead-simple.
 
 ## 🛠️ Develop
 

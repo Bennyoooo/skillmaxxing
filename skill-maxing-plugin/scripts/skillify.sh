@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Thin wrapper over the skill-maxing CLI's `skillify` command.
+# Thin wrapper over the skillmaxxing CLI's `skillify` command.
 set -euo pipefail
 
-if command -v skill-maxing >/dev/null 2>&1; then
-  exec skill-maxing skillify "$@"
+if command -v skillmaxxing >/dev/null 2>&1; then
+  exec skillmaxxing skillify "$@"
 elif command -v skillmax >/dev/null 2>&1; then
   exec skillmax skillify "$@"
 else
-  exec npx --yes skill-maxing skillify "$@"
+  exec npx --yes skillmaxxing skillify "$@"
 fi

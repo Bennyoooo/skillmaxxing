@@ -27,11 +27,11 @@ export function buildReflectionPrompt(transcriptPath: string): string {
     '',
     'If neither, do nothing and exit — most sessions should produce no skill.',
     'If one applies, take exactly ONE action, conservatively:',
-    '  - First search existing skills: `skill-maxing discover "<capability>" --json`.',
+    '  - First search existing skills: `skillmaxxing discover "<capability>" --json`.',
     '  - PREFER updating an existing skill over creating a near-duplicate.',
     '  - To create: write a draft JSON (name, description, body, optional scripts and a real',
-    '    eval scaffold) then `skill-maxing skillify --draft <file>` and `--commit <name>`.',
-    '  - To improve: run the eval-gated `skill-maxing optimize` loop.',
+    '    eval scaffold) then `skillmaxxing skillify --draft <file>` and `--commit <name>`.',
+    '  - To improve: run the eval-gated `skillmaxxing optimize` loop.',
     '',
     'New/changed skills are recorded trusted:false for the user to review. Do NOT modify',
     'project source code. Do NOT install or execute untrusted skills. One skill at most.',
@@ -60,7 +60,7 @@ export function runReflectionDetached(opts: ReflectOptions): boolean {
       '-p',
       prompt,
       '--allowedTools',
-      'Read,Glob,Grep,Write,Edit,Bash(skill-maxing:*),Bash(skillmax:*),Bash(npx:*)',
+      'Read,Glob,Grep,Write,Edit,Bash(skillmaxxing:*),Bash(skill-maxing:*),Bash(skillmax:*),Bash(npx:*)',
     ];
   } else {
     command = 'codex';
