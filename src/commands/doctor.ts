@@ -10,7 +10,7 @@ import * as log from '../util/log.js';
 const execFileAsync = promisify(execFile);
 
 export async function doctor(): Promise<void> {
-  log.heading('skill-maxing doctor');
+  log.heading('skillmaxxing doctor');
   let issues = 0;
 
   log.heading('Agent Detection');
@@ -80,7 +80,7 @@ export async function doctor(): Promise<void> {
   if (issues === 0) {
     log.success('No issues found.');
   } else {
-    log.warn(`${issues} issue(s) found. Run 'skill-maxing update' to fix stale installs.`);
+    log.warn(`${issues} issue(s) found. Run 'skillmaxxing update' to fix stale installs.`);
   }
 }
 

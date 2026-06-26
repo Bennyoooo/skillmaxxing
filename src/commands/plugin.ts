@@ -230,7 +230,7 @@ function status(args: PluginArgs): void {
   if (owned.length > 0) {
     log.success(`Skill Maxing is active for Claude Code: ${owned.join(', ')} hooks (${file}).`);
   } else {
-    log.info('Skill Maxing is not installed for Claude Code. Run: skill-maxing plugin install');
+    log.info('Skill Maxing is not installed for Claude Code. Run: skillmaxxing plugin install');
   }
 }
 
