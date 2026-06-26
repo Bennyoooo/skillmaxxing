@@ -7,14 +7,6 @@
         ]
       }
     ],
-    "PostToolUse": [
-      {
-        "matcher": "*",
-        "hooks": [
-          { "type": "command", "command": "npx -y skillmaxxing plugin on-tool" }
-        ]
-      }
-    ],
     "Stop": [
       {
         "hooks": [

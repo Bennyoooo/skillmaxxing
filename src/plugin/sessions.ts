@@ -4,20 +4,19 @@ import * as os from 'node:os';
 import { ensureDir } from '../util/fs.js';
 
 /**
- * Per-session tool-call counter that gates the auto-reflection loop. The plugin
- * hooks increment a counter on every tool use (PostToolUse) and, on Stop, fire
- * reflection only once enough substantive work has accrued — the Hermes
- * "iteration-gated review" idea, adapted to coding-agent hooks. State lives
- * outside any skill dir so it never affects skill content hashes.
+ * Reflection ledger: tracks how many tool calls had occurred at the last
+ * reflection, so the Stop hook can decide whether enough new work has accrued.
+ *
+ * Counting is done by reading the session transcript at Stop (see countToolUses)
+ * rather than incrementing on every tool call. That removes the per-tool hook
+ * entirely — the loop runs on Stop only — which keeps the agent fast on every
+ * install path (global, npx, or bundled). State lives outside any skill dir.
  */
 
 const SESSIONS_DIR = path.join(os.homedir(), '.skillmax', 'sessions');
 
 export interface SessionState {
-  /** Total tool calls observed this session. */
-  tools: number;
-  /** Tool count at the last reflection (so we measure work since then). */
-  lastReflectTools: number;
+  lastReflectCount: number;
   reflectedAt?: string;
 }
 
@@ -29,13 +28,13 @@ function sessionPath(id: string): string {
 export function readSession(id: string): SessionState {
   try {
     const data = JSON.parse(fs.readFileSync(sessionPath(id), 'utf-8'));
-    if (typeof data?.tools === 'number') {
-      return { tools: data.tools, lastReflectTools: data.lastReflectTools ?? 0, reflectedAt: data.reflectedAt };
+    if (typeof data?.lastReflectCount === 'number') {
+      return { lastReflectCount: data.lastReflectCount, reflectedAt: data.reflectedAt };
     }
   } catch {
     /* fall through to default */
   }
-  return { tools: 0, lastReflectTools: 0 };
+  return { lastReflectCount: 0 };
 }
 
 function writeSession(id: string, state: SessionState): void {
@@ -46,29 +45,31 @@ function writeSession(id: string, state: SessionState): void {
   fs.renameSync(tmp, target);
 }
 
-/** Record one tool use; returns the new total. */
-export function recordToolUse(id: string): number {
-  const s = readSession(id);
-  s.tools += 1;
-  writeSession(id, s);
-  return s.tools;
+/**
+ * Count tool calls in a Claude Code transcript (JSONL). Robust substring count of
+ * `"tool_use"` blocks (tolerant of formatting/whitespace; `"tool_use_id"` in
+ * tool-result entries is NOT matched). Returns 0 if the transcript is unreadable.
+ */
+export function countToolUses(transcriptPath: string): number {
+  try {
+    const raw = fs.readFileSync(transcriptPath, 'utf-8');
+    return (raw.match(/"tool_use"/g) || []).length;
+  } catch {
+    return 0;
+  }
 }
 
-/** Tool calls since the last reflection. */
-export function toolsSinceReflect(id: string): number {
-  const s = readSession(id);
-  return s.tools - s.lastReflectTools;
+/** Tool calls observed since the last reflection (never negative). */
+export function toolsSinceReflect(id: string, currentCount: number): number {
+  return Math.max(0, currentCount - readSession(id).lastReflectCount);
 }
 
-/** True when enough substantive work has accrued to warrant a reflection. */
-export function shouldReflect(id: string, threshold: number): boolean {
-  return toolsSinceReflect(id) >= threshold;
+/** True when enough new tool calls have accrued since the last reflection. */
+export function shouldReflect(id: string, currentCount: number, threshold: number): boolean {
+  return toolsSinceReflect(id, currentCount) >= threshold;
 }
 
-/** Mark that a reflection ran at the current tool count. */
-export function markReflected(id: string, now: string): void {
-  const s = readSession(id);
-  s.lastReflectTools = s.tools;
-  s.reflectedAt = now;
-  writeSession(id, s);
+/** Record that a reflection ran at the given cumulative tool count. */
+export function markReflected(id: string, currentCount: number, now: string): void {
+  writeSession(id, { lastReflectCount: currentCount, reflectedAt: now });
 }

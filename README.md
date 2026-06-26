@@ -26,63 +26,73 @@ Every coding agent starts every task from zero. It solves the same gnarly migrat
 
 Inspired by the [Hermes Agent](https://github.com/NousResearch/hermes-agent) self-improvement loop, adapted to run on the hooks that Claude Code, Codex, and other agents already expose.
 
-## ⚡ Install in one line
+## ⚡ Install
+
+**Requirement:** Node.js ≥ 20 (the CLI is a Node program). Check with `node -v`.
+
+### Recommended — one line, works on any machine
 
 ```bash
-npx skillmaxxing@latest plugin install
+npm i -g skillmaxxing && skillmaxxing plugin install
 ```
 
-That's it. Restart your agent session and Skill Maxing is live — **you never have to invoke anything.**
+Installs the CLI globally and wires the hooks to it. Restart your agent session and you're done — **you never have to invoke anything.** Fast, persistent, and works on every laptop.
 
-<details>
-<summary>Claude Code, the native way</summary>
+### No global install (npx)
 
 ```bash
+npx skillmaxxing plugin install
+```
+
+Works without installing anything globally; the hooks fall back to a version-pinned `npx` call. Great for trying it out — for daily use prefer the global install (the `npx` hook adds a little latency at each turn-end).
+
+### Claude Code marketplace (alternative)
+
+```text
 /plugin marketplace add Bennyoooo/skillmaxxing
 /plugin install skillmaxxing
 ```
-</details>
 
-<details>
-<summary>Codex / other agents</summary>
+### Codex / other agents
 
 ```bash
-npx skillmaxxing@latest plugin install --agent codex
+npm i -g skillmaxxing && skillmaxxing plugin install --agent codex
 ```
 
 Codex has no programmatic stop hook, so self-evolution runs **in-session** via standing guidance written to `AGENTS.md`. Claude Code gets the full background loop below.
-</details>
 
-Turn it off any time:
+> **Pick one mechanism per agent.** For Claude Code, use either the marketplace plugin **or** `plugin install` — not both, or you'll get duplicate hooks.
+
+Manage it any time:
 
 ```bash
-npx skillmaxxing plugin uninstall      # check state with: plugin status
+skillmaxxing plugin status      # is it active?
+skillmaxxing plugin uninstall   # remove the hooks
 ```
 
 ## 🧠 How it works
 
-Skill Maxing installs three hooks. You do nothing — the loop runs itself.
+Skill Maxing installs just two hooks. You do nothing — the loop runs itself.
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  SessionStart   →  inject standing guidance                    │
 │                    "crystallize reusable work; fix stale skills"│
 │                                                                │
-│  PostToolUse    →  count substantive tool calls this session   │
-│                                                                │
-│  Stop (task done) → enough work? fork a background reflector:   │
-│                     review the transcript and, if warranted,    │
-│                     create ONE new skill or improve an existing │
-│                     one — autonomously, trusted:false           │
+│  Stop (task done) → count tool calls in the transcript; if     │
+│                     enough new work accrued, fork a background  │
+│                     reflector: review the session and, if       │
+│                     warranted, create ONE new skill or improve  │
+│                     an existing one — autonomously, trusted:false│
 └──────────────────────────────────────────────────────────────┘
 ```
 
-This mirrors Hermes' three layers:
+There's no per-tool hook — work is counted from the session transcript at Stop — so the agent stays fast on every install path. This mirrors Hermes' layers:
 
 | Hermes | Skill Maxing |
 |--------|--------------|
 | Always-on system-prompt nudge | **SessionStart** hook injects skill-creation guidance |
-| Background review every N iterations | **PostToolUse** counter + **Stop** hook fork a headless reflector after a threshold of real work |
+| Background review after N iterations | **Stop** hook counts transcript tool calls and forks a headless reflector past a threshold |
 | Provenance-gated curation | New/changed skills are recorded **`trusted: false`** until you approve them |
 
 Two key Hermes ideas carry straight over: the reflector **prefers updating an existing skill over creating a near-duplicate**, and it is **conservative** — most sessions produce no skill at all.
