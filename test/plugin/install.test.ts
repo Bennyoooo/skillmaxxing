@@ -28,10 +28,12 @@ after(() => {
 
 const settingsPath = () => path.join(tmpHome, '.claude', 'settings.json');
 const readSettings = () => JSON.parse(fs.readFileSync(settingsPath(), 'utf-8'));
+
+// Name-agnostic ownership check — matches our unique subcommands regardless of
+// whether the hook resolved to a global bin or a versioned `npx` invocation.
+const OURS = /\bplugin (guidance|on-tool|on-stop)\b/;
 function ownsHook(groups: any[]): boolean {
-  return (groups ?? []).some((g: any) =>
-    (g.hooks ?? []).some((h: any) => typeof h.command === 'string' && h.command.includes('skillmaxxing plugin')),
-  );
+  return (groups ?? []).some((g: any) => (g.hooks ?? []).some((h: any) => OURS.test(h.command ?? '')));
 }
 
 beforeEach(() => {
@@ -42,22 +44,24 @@ beforeEach(() => {
   }
 });
 
-test('install (auto) wires SessionStart, PostToolUse, and Stop hooks', async () => {
+test('install wires SessionStart + Stop only (no per-tool hook)', async () => {
   await plugin.plugin({ action: 'install', agent: 'claude', mode: 'auto', threshold: 10 });
   const s = readSettings();
   assert.ok(ownsHook(s.hooks.SessionStart), 'SessionStart owned');
-  assert.ok(ownsHook(s.hooks.PostToolUse), 'PostToolUse owned');
   assert.ok(ownsHook(s.hooks.Stop), 'Stop owned');
-  const stopCmd = s.hooks.Stop.flatMap((g: any) => g.hooks).find((h: any) => h.command.includes('on-stop')).command;
+  assert.ok(!ownsHook(s.hooks.PostToolUse ?? []), 'no per-tool hook');
+  const stopCmd = s.hooks.Stop.flatMap((g: any) => g.hooks).find((h: any) => /on-stop/.test(h.command)).command;
   assert.match(stopCmd, /--threshold 10/);
 });
 
-test('install (nudge) wires SessionStart only, not the background loop', async () => {
+test('nudge mode also wires Stop (in-session reminder), still no per-tool hook', async () => {
   await plugin.plugin({ action: 'install', agent: 'claude', mode: 'nudge' });
   const s = readSettings();
   assert.ok(ownsHook(s.hooks.SessionStart));
+  assert.ok(ownsHook(s.hooks.Stop));
+  const stopCmd = s.hooks.Stop.flatMap((g: any) => g.hooks).find((h: any) => /on-stop/.test(h.command)).command;
+  assert.match(stopCmd, /--mode nudge/);
   assert.ok(!ownsHook(s.hooks.PostToolUse ?? []));
-  assert.ok(!ownsHook(s.hooks.Stop ?? []));
 });
 
 test('install preserves unrelated hooks; uninstall removes only ours', async () => {
@@ -84,10 +88,21 @@ test('reinstall is idempotent (no duplicate hook groups)', async () => {
   await plugin.plugin({ action: 'install', agent: 'claude', mode: 'auto' });
   await plugin.plugin({ action: 'install', agent: 'claude', mode: 'auto' });
   const s = readSettings();
-  const ourSessionGroups = s.hooks.SessionStart.filter((g: any) =>
-    g.hooks.some((h: any) => h.command.includes('skillmaxxing plugin')),
+  const ourStop = s.hooks.Stop.filter((g: any) => g.hooks.some((h: any) => OURS.test(h.command)));
+  assert.equal(ourStop.length, 1);
+});
+
+test('legacy per-tool hook from an older install is cleaned up', async () => {
+  fs.mkdirSync(path.join(tmpHome, '.claude'), { recursive: true });
+  fs.writeFileSync(
+    settingsPath(),
+    JSON.stringify({
+      hooks: { PostToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: 'skillmaxxing plugin on-tool' }] }] },
+    }),
   );
-  assert.equal(ourSessionGroups.length, 1);
+  await plugin.plugin({ action: 'install', agent: 'claude', mode: 'auto' });
+  const s = readSettings();
+  assert.ok(!('PostToolUse' in s.hooks) || (s.hooks.PostToolUse ?? []).length === 0, 'legacy PostToolUse removed');
 });
 
 test('reflect prompt names the transcript and recursion guard reads env', () => {

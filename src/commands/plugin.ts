@@ -2,9 +2,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
 import { ensureDir } from '../util/fs.js';
 import { SKILLS_GUIDANCE, REFLECT_NUDGE } from '../plugin/guidance.js';
-import { recordToolUse, shouldReflect, markReflected } from '../plugin/sessions.js';
+import { countToolUses, shouldReflect, markReflected } from '../plugin/sessions.js';
 import { runReflectionDetached, isReflecting, type ReflectAgent } from '../plugin/reflect.js';
 import * as log from '../util/log.js';
 
@@ -27,16 +29,43 @@ function isOurHook(command: unknown): boolean {
 
 // ---------- shared helpers ----------
 
-function resolveCli(): string {
+function pkgVersion(): string {
+  try {
+    return createRequire(import.meta.url)('../../package.json').version ?? 'latest';
+  } catch {
+    return 'latest';
+  }
+}
+
+/**
+ * Resolve a command that will reliably invoke this CLI from inside a hook on ANY
+ * machine, indefinitely — the hook must never point at a binary that disappears.
+ * Priority:
+ *   1. Running as a real GLOBAL install -> bare `skillmaxxing` (fast, persistent).
+ *   2. A stable bin on PATH that is NOT an ephemeral npx-cache bin -> use it.
+ *   3. Otherwise -> `npx -y skillmaxxing@<version>` (self-sufficient, no global
+ *      install needed; pinned for reproducibility). `persistent:false` so the
+ *      installer can recommend a global install for speed.
+ */
+function resolveCli(): { cmd: string; persistent: boolean } {
+  const here = fileURLToPath(import.meta.url);
+  try {
+    const globalRoot = fs.realpathSync(execSync('npm root -g', { encoding: 'utf-8' }).trim());
+    if (here.startsWith(globalRoot + path.sep)) return { cmd: 'skillmaxxing', persistent: true };
+  } catch {
+    /* npm not available — fall through */
+  }
   for (const bin of ['skillmaxxing', 'skill-maxing', 'skillmax']) {
     try {
-      execSync(`command -v ${bin}`, { stdio: 'ignore' });
-      return bin;
+      const p = execSync(`command -v ${bin}`, { encoding: 'utf-8' }).trim();
+      if (p && !fs.realpathSync(p).includes(`${path.sep}_npx${path.sep}`)) {
+        return { cmd: bin, persistent: true };
+      }
     } catch {
       /* not on PATH */
     }
   }
-  return 'npx -y skillmaxxing';
+  return { cmd: `npx -y skillmaxxing@${pkgVersion()}`, persistent: false };
 }
 
 function readStdin(): Record<string, unknown> {
@@ -86,44 +115,39 @@ function install(args: PluginArgs): void {
   const agent: ReflectAgent = args.agent ?? 'claude';
   const mode: ReflectMode = args.mode ?? 'auto';
   const threshold = args.threshold ?? DEFAULT_THRESHOLD;
-  const cli = resolveCli();
 
   if (agent === 'codex') {
     installCodex();
     return;
   }
 
+  const { cmd: cli, persistent } = resolveCli();
   const file = claudeSettingsPath(args.project ?? false);
   const settings = readJson(file);
   settings.hooks = settings.hooks ?? {};
 
-  // SessionStart: standing guidance (Layer A) — always wired.
+  // Two hooks only — no per-tool hook. SessionStart injects standing guidance
+  // (Layer A); Stop runs the reflection loop (Layer B), counting tool calls from
+  // the transcript so there is zero per-tool overhead on any install path.
   settings.hooks.SessionStart = [
     ...stripOurs(settings.hooks.SessionStart),
     { hooks: [{ type: 'command', command: `${cli} plugin guidance` }] },
   ];
-
-  // PostToolUse + Stop: the background reflection loop (Layer B) — auto mode only.
-  if (mode === 'auto') {
-    settings.hooks.PostToolUse = [
-      ...stripOurs(settings.hooks.PostToolUse),
-      { matcher: '*', hooks: [{ type: 'command', command: `${cli} plugin on-tool` }] },
-    ];
-    settings.hooks.Stop = [
-      ...stripOurs(settings.hooks.Stop),
-      {
-        hooks: [
-          {
-            type: 'command',
-            command: `${cli} plugin on-stop --agent ${agent} --mode ${mode} --threshold ${threshold}`,
-          },
-        ],
-      },
-    ];
-  } else {
-    // nudge mode: remove any auto hooks we previously installed
-    settings.hooks.PostToolUse = stripOurs(settings.hooks.PostToolUse);
-    settings.hooks.Stop = stripOurs(settings.hooks.Stop);
+  settings.hooks.Stop = [
+    ...stripOurs(settings.hooks.Stop),
+    {
+      hooks: [
+        {
+          type: 'command',
+          command: `${cli} plugin on-stop --agent ${agent} --mode ${mode} --threshold ${threshold}`,
+        },
+      ],
+    },
+  ];
+  // Remove any legacy per-tool hooks left by older installs.
+  settings.hooks.PostToolUse = stripOurs(settings.hooks.PostToolUse);
+  if (Array.isArray(settings.hooks.PostToolUse) && settings.hooks.PostToolUse.length === 0) {
+    delete settings.hooks.PostToolUse;
   }
 
   writeJson(file, settings);
@@ -131,11 +155,19 @@ function install(args: PluginArgs): void {
   log.success(`Skill Maxing installed for Claude Code (${mode} mode).`);
   log.info(`  hooks written to ${file}`);
   log.info(`  SessionStart: standing skill-creation guidance`);
-  if (mode === 'auto') {
-    log.info(`  Stop: background reflection after ${threshold}+ tool calls (claude -p, trusted:false drafts)`);
+  log.info(
+    mode === 'auto'
+      ? `  Stop: background reflection after ${threshold}+ tool calls (trusted:false drafts)`
+      : `  Stop: in-session reminder after ${threshold}+ tool calls`,
+  );
+  if (!persistent) {
+    log.warn(
+      'Hooks use `npx` (no global install found) — adds latency at each turn end. ' +
+        'For best speed: npm i -g skillmaxxing && skillmaxxing plugin install',
+    );
   }
   log.info('No explicit trigger needed — restart your agent session to activate.');
-  log.info('Uninstall any time with: skill-maxing plugin uninstall');
+  log.info('Uninstall any time with: skillmaxxing plugin uninstall');
 }
 
 const CODEX_MARK_START = '<!-- skill-maxing:start -->';
@@ -214,10 +246,8 @@ function guidance(): void {
 }
 
 function onTool(): void {
-  if (isReflecting()) return; // don't count the reflector's own work
-  const input = readStdin();
-  const id = typeof input.session_id === 'string' ? input.session_id : 'default';
-  recordToolUse(id);
+  // Deprecated no-op: tool counting moved to the Stop hook (transcript-based).
+  // Retained so hooks left by older installs do not error.
 }
 
 function onStop(args: PluginArgs): void {
@@ -228,17 +258,16 @@ function onStop(args: PluginArgs): void {
   const mode: ReflectMode = args.mode ?? 'auto';
   const threshold = args.threshold ?? DEFAULT_THRESHOLD;
 
-  if (!shouldReflect(id, threshold)) return; // not enough substantive work yet
+  const count = transcriptPath ? countToolUses(transcriptPath) : 0;
+  if (!shouldReflect(id, count, threshold)) return; // not enough new work since last reflection
+
+  markReflected(id, count, new Date().toISOString());
 
   if (mode === 'nudge') {
-    // Surface a one-line reminder to the user; the agent acts on standing guidance.
+    // One-line reminder; the agent acts on the standing SessionStart guidance.
     console.log(JSON.stringify({ systemMessage: `Skill Maxing: ${REFLECT_NUDGE}` }));
-    markReflected(id, new Date().toISOString());
     return;
   }
-
-  // auto mode: fire the background reflector and reset the counter.
-  markReflected(id, new Date().toISOString());
   if (transcriptPath) {
     runReflectionDetached({ agent: args.agent ?? 'claude', transcriptPath, cwd: process.cwd() });
   }
