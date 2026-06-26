@@ -11,10 +11,19 @@ import { remove } from './commands/remove.js';
 import { update } from './commands/update.js';
 import { init } from './commands/init.js';
 import { doctor } from './commands/doctor.js';
+import { createRequire } from 'node:module';
 import * as log from './util/log.js';
 import type { Scope } from './types.js';
 
-const VERSION = '0.1.0';
+// Read the version from package.json so --version / help never drift from the
+// published package.
+const VERSION: string = (() => {
+  try {
+    return createRequire(import.meta.url)('../package.json').version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+})();
 
 function parseFlags(argv: string[]): { positional: string[]; flags: Record<string, string | true> } {
   const positional: string[] = [];
@@ -57,12 +66,12 @@ function parseFlags(argv: string[]): { positional: string[]; flags: Record<strin
 }
 
 function printHelp(): void {
-  console.log(`skill-maxing v${VERSION}
+  console.log(`skillmaxxing v${VERSION}
 
-A stack for installing, creating, improving, and governing AI agent skills.
+Self-evolving skills for your coding agent — auto-create and auto-improve skills as you work.
 
 Usage:
-  skill-maxing <command> [options]
+  skillmaxxing <command> [options]
 
 Commands:
   plugin <action>     Self-evolving plugin: install|uninstall|status (hooks, no trigger)
@@ -91,15 +100,13 @@ Options:
   --version           Show version
 
 Examples:
-  skill-maxing install owner/repo              Install skills from GitHub
-  skill-maxing install ./my-skills -g          Install local skills globally
-  skill-maxing install owner/repo -a claude    Install for Claude Code only
-  skill-maxing list                            List all installed skills
-  skill-maxing list -g                         List global skills only
-  skill-maxing remove my-skill                 Remove a skill
-  skill-maxing update                          Update all installed skills
-  skill-maxing init my-new-skill               Create a skill template
-  skill-maxing doctor                          Check health
+  skillmaxxing plugin install                  Turn on self-evolving skills (no trigger needed)
+  skillmaxxing plugin install --agent codex    Enable it for Codex
+  skillmaxxing install owner/repo              Install skills from GitHub
+  skillmaxxing install ./my-skills -g          Install local skills globally
+  skillmaxxing discover "code review"          Find a skill by intent
+  skillmaxxing list                            List all installed skills
+  skillmaxxing doctor                          Check health
 `);
 }
 
@@ -128,7 +135,7 @@ async function main(): Promise<void> {
       case 'i': {
         const source = positional[1];
         if (!source) {
-          log.error('Usage: skill-maxing install <source>');
+          log.error('Usage: skillmaxxing install <source>');
           process.exit(1);
         }
         await install({ source, agents, scope, copy: flags.copy === true, force: flags.force === true });
@@ -140,7 +147,7 @@ async function main(): Promise<void> {
       case 'find': {
         const query = positional.slice(1).join(' ');
         if (!query) {
-          log.error('Usage: skill-maxing discover "<what you want>" [--repo owner/repo] [--install <name>]');
+          log.error('Usage: skillmaxxing discover "<what you want>" [--repo owner/repo] [--install <name>]');
           process.exit(1);
         }
         const repos = typeof flags.repo === 'string' ? flags.repo.split(',') : undefined;
@@ -180,7 +187,7 @@ async function main(): Promise<void> {
       case 'opt': {
         const action = positional[1] as OptimizeArgs['action'];
         if (!action) {
-          log.error('Usage: skill-maxing optimize <score|apply|gate|promote|revert> [options]');
+          log.error('Usage: skillmaxxing optimize <score|apply|gate|promote|revert> [options]');
           process.exit(1);
         }
         const num = (k: string): number | undefined => {
@@ -219,7 +226,7 @@ async function main(): Promise<void> {
       case 'ws': {
         const action = positional[1] as WorkspaceArgs['action'];
         if (!action) {
-          log.error('Usage: skill-maxing workspace <publish|sync|list|pool|promote> --registry <dir> [options]');
+          log.error('Usage: skillmaxxing workspace <publish|sync|list|pool|promote> --registry <dir> [options]');
           process.exit(1);
         }
         const str = (k: string): string | undefined =>
@@ -245,7 +252,7 @@ async function main(): Promise<void> {
       case 'plugin': {
         const action = positional[1] as PluginArgs['action'];
         if (!action) {
-          log.error('Usage: skill-maxing plugin <install|uninstall|status> [--agent claude|codex] [--mode auto|nudge] [--threshold N] [--project]');
+          log.error('Usage: skillmaxxing plugin <install|uninstall|status> [--agent claude|codex] [--mode auto|nudge] [--threshold N] [--project]');
           process.exit(1);
         }
         const pAgent = agentFlag === 'codex' ? 'codex' : agentFlag === 'claude' ? 'claude' : undefined;
@@ -273,7 +280,7 @@ async function main(): Promise<void> {
       case 'rm': {
         const names = positional.slice(1);
         if (names.length === 0) {
-          log.error('Usage: skill-maxing remove <skill-name> [skill-name...]');
+          log.error('Usage: skillmaxxing remove <skill-name> [skill-name...]');
           process.exit(1);
         }
         await remove({ names, agent: agentFlag, scope: flags.global === true ? 'global' : undefined });
