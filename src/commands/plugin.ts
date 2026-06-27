@@ -6,21 +6,25 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { ensureDir } from '../util/fs.js';
 import { SKILLS_GUIDANCE, REFLECT_NUDGE } from '../plugin/guidance.js';
-import { countToolUses, shouldReflect, markReflected } from '../plugin/sessions.js';
-import { runReflectionDetached, isReflecting, type ReflectAgent } from '../plugin/reflect.js';
+import { countToolUses, shouldReflect, markReflected, readSession } from '../plugin/sessions.js';
+import { spawnReflector, reflectRun, isReflecting, type ReflectAgent } from '../plugin/reflect.js';
 import * as log from '../util/log.js';
 
 export type ReflectMode = 'auto' | 'nudge';
 
 export interface PluginArgs {
-  action: 'install' | 'uninstall' | 'status' | 'guidance' | 'on-tool' | 'on-stop';
+  action: 'install' | 'uninstall' | 'status' | 'guidance' | 'on-tool' | 'on-stop' | 'reflect-run';
   agent?: ReflectAgent;
   mode?: ReflectMode;
   threshold?: number;
   project?: boolean;
+  /** Transcript path for the reflect-run watchdog. */
+  transcriptPath?: string;
 }
 
 const DEFAULT_THRESHOLD = 10;
+/** Per-session minimum interval between reflections (complements the global lock). */
+const REFLECT_COOLDOWN_MS = 30 * 60 * 1000;
 
 /** Identify hooks we own (any of our bin names), keyed on our unique subcommands. */
 function isOurHook(command: unknown): boolean {
@@ -261,6 +265,11 @@ function onStop(args: PluginArgs): void {
   const count = transcriptPath ? countToolUses(transcriptPath) : 0;
   if (!shouldReflect(id, count, threshold)) return; // not enough new work since last reflection
 
+  // Per-session cooldown: never reflect more than once per window, even on a very
+  // active session. Complements the global single-flight lock in the watchdog.
+  const last = readSession(id).reflectedAt;
+  if (last && Date.now() - Date.parse(last) < REFLECT_COOLDOWN_MS) return;
+
   markReflected(id, count, new Date().toISOString());
 
   if (mode === 'nudge') {
@@ -269,7 +278,8 @@ function onStop(args: PluginArgs): void {
     return;
   }
   if (transcriptPath) {
-    runReflectionDetached({ agent: args.agent ?? 'claude', transcriptPath, cwd: process.cwd() });
+    // Spawn the watchdog; the single-flight lock + hard timeout live inside it.
+    spawnReflector({ cli: resolveCli().cmd, agent: args.agent ?? 'claude', transcriptPath, cwd: process.cwd() });
   }
 }
 
@@ -287,6 +297,8 @@ export async function plugin(args: PluginArgs): Promise<void> {
       return onTool();
     case 'on-stop':
       return onStop(args);
+    case 'reflect-run':
+      return reflectRun({ agent: args.agent ?? 'claude', transcriptPath: args.transcriptPath ?? '' });
     default:
       log.error(`Unknown plugin action: ${args.action}`);
       process.exitCode = 1;

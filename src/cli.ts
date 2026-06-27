@@ -267,6 +267,7 @@ async function main(): Promise<void> {
           mode: pMode,
           threshold: pThreshold,
           project: flags.project === true,
+          transcriptPath: typeof flags.transcript === 'string' ? flags.transcript : undefined,
         });
         break;
       }

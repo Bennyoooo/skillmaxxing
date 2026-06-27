@@ -7,3 +7,9 @@ dist/
 .skillmax/
 coverage/
 *.log
+.agents/
+.claude/
+.cursor/
+.hermes/
+.opencode/
+skills-lock.json
