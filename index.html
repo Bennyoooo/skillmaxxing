@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skill Maxing — self-evolving skills for your coding agent</title>
+<meta name="description" content="A plugin that makes your coding agent write and improve its own skills as it works. No command, no trigger. Claude Code & Codex. Open source, MIT." />
+<meta property="og:title" content="Skill Maxing — self-evolving skills for your coding agent" />
+<meta property="og:description" content="Your coding agent writes and improves its own skills as it works. No command, no trigger." />
+<meta property="og:type" content="website" />
+<style>
+  :root{
+    --bg:#0c0f17; --panel:#141926; --panel2:#1a2030; --ink:#e6ebf5; --mut:#8b93a7;
+    --line:#222a3d;
+    --rainbow:linear-gradient(90deg,#ff4d4d,#ff9f1c,#ffd23f,#2ec27e,#22b8cf,#4d79ff,#9b5de5);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+    background-image:radial-gradient(900px 500px at 50% -120px,rgba(77,121,255,.10),transparent 70%);}
+  a{color:#7aa2ff;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px}
+  .rainbow{height:4px;background:var(--rainbow)}
+  /* hero */
+  header{text-align:center;padding:64px 0 40px}
+  header img{width:min(560px,86%);height:auto;image-rendering:pixelated}
+  h1{font-size:clamp(28px,5vw,44px);margin:26px 0 6px;letter-spacing:-.5px}
+  .tag{color:var(--mut);font-size:clamp(15px,2.4vw,19px);max-width:620px;margin:0 auto}
+  .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:18px 0 0}
+  .badges img{height:20px}
+  /* install */
+  .cmd{display:flex;align-items:center;gap:10px;background:#0a0d14;border:1px solid var(--line);
+    border-radius:12px;padding:14px 16px;max-width:560px;margin:26px auto 10px;font-family:var(--mono)}
+  .cmd code{color:#cfe1ff;font-size:14px;overflow:auto;white-space:nowrap;flex:1;text-align:left}
+  .cmd button{font-family:var(--sans);font-size:12px;font-weight:600;color:#0c0f17;border:0;border-radius:8px;
+    padding:7px 11px;background:#2ec27e;cursor:pointer;white-space:nowrap}
+  .cmd button:hover{filter:brightness(1.08)}
+  .alt{color:var(--mut);font-size:13px;font-family:var(--mono)}
+  .cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:22px 0 0}
+  .btn{display:inline-block;padding:11px 18px;border-radius:10px;font-weight:600;font-size:14px}
+  .btn.primary{color:#0c0f17;background:#ffd23f}
+  .btn.ghost{color:var(--ink);border:1px solid var(--line);background:var(--panel)}
+  .btn:hover{text-decoration:none;transform:translateY(-1px)}
+  /* sections */
+  section{padding:40px 0}
+  h2{font-size:clamp(20px,3.4vw,26px);margin:0 0 4px}
+  .lead{color:var(--mut);margin:0 0 24px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .card h3{margin:0 0 6px;font-size:17px}
+  .card p{margin:0;color:var(--mut);font-size:14px}
+  .kbd{font-family:var(--mono);font-size:12px;color:#cfe1ff;background:#0a0d14;border:1px solid var(--line);
+    border-radius:6px;padding:1px 6px}
+  /* flow */
+  .flow{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 20px}
+  .step{display:flex;gap:16px;align-items:flex-start;padding:16px 0;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:0}
+  .dot{flex:0 0 auto;width:34px;height:34px;border-radius:9px;background:var(--panel2);display:grid;place-items:center;
+    font-family:var(--mono);font-size:12px;color:#ffd23f;border:1px solid var(--line)}
+  .step b{font-family:var(--mono);font-weight:600}
+  .step p{margin:2px 0 0;color:var(--mut);font-size:14px}
+  ul.facts{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  ul.facts li{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--mut)}
+  ul.facts b{color:var(--ink)}
+  footer{border-top:1px solid var(--line);padding:30px 0 60px;color:var(--mut);font-size:13px;text-align:center}
+  footer a{margin:0 8px}
+  @media(max-width:720px){.grid{grid-template-columns:1fr}ul.facts{grid-template-columns:1fr}.cmd code{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="rainbow"></div>
+
+<header>
+  <div class="wrap">
+    <img src="assets/hero.svg" alt="SKILLMAXXING" />
+    <h1>Self-evolving skills for your coding agent</h1>
+    <p class="tag">Your agent writes and improves its own skills as it works — no command, no trigger. Inspired by the Hermes self-improvement loop, built for Claude Code &amp; Codex.</p>
+
+    <div class="badges">
+      <img alt="npm" src="https://img.shields.io/npm/v/skillmaxxing?color=2ec27e&label=npm" />
+      <img alt="node" src="https://img.shields.io/badge/node-%E2%89%A520-22b8cf" />
+      <img alt="license" src="https://img.shields.io/badge/license-MIT-9b5de5" />
+    </div>
+
+    <div class="cmd">
+      <code id="install">npm i -g skillmaxxing &amp;&amp; skillmaxxing plugin install</code>
+      <button onclick="copyCmd()" id="copybtn">Copy</button>
+    </div>
+    <div class="alt">no global install? &nbsp;<span style="color:#cfe1ff">npx skillmaxxing plugin install</span></div>
+
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/Bennyoooo/skillmaxxing">★ Star on GitHub</a>
+      <a class="btn ghost" href="https://www.npmjs.com/package/skillmaxxing">View on npm</a>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <h2>Why</h2>
+    <p class="lead">Every coding agent starts every task from zero — re-solving the same migration, re-deriving the same release flow, re-learning the same repo quirk, then forgetting it all. Skill Maxing makes the forgetting stop.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>🧠 Auto-create</h3>
+        <p>After real work, the agent reflects on what it did and crystallizes the reusable part into a skill.</p>
+      </div>
+      <div class="card">
+        <h3>📈 Auto-improve</h3>
+        <p>When a skill underperforms, it's refined through an eval-gated loop — promoted only on a strict, reversible win.</p>
+      </div>
+      <div class="card">
+        <h3>⚡ No trigger</h3>
+        <p>It runs off hooks. You install one line and never invoke anything — the agent just gets better at your codebase.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p class="lead">Two hooks run the loop. You do nothing.</p>
+    <div class="flow">
+      <div class="step">
+        <div class="dot">1</div>
+        <div><b>SessionStart</b><p>Injects standing guidance: "crystallize reusable work; fix stale skills."</p></div>
+      </div>
+      <div class="step">
+        <div class="dot">2</div>
+        <div><b>Stop · task done</b><p>Counts the session's tool calls; once enough new work has accrued, it forks a conservative background reflector — most sessions produce nothing.</p></div>
+      </div>
+      <div class="step">
+        <div class="dot">3</div>
+        <div><b>Reflect</b><p>The reflector reviews the session and creates or improves exactly one skill — autonomously, recorded <span class="kbd">trusted:false</span> until you approve it.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Safe by design</h2>
+    <p class="lead">A self-improving agent you can actually trust.</p>
+    <ul class="facts">
+      <li><b>Untrusted by default.</b> Auto-created skills are <span class="kbd">trusted:false</span> and won't run code until you approve.</li>
+      <li><b>Eval-gated &amp; reversible.</b> Improvements ship only on a strict score win; every version is retained.</li>
+      <li><b>Bounded background.</b> Single-flight lock + hard timeout — the reflector can never stack or run away.</li>
+      <li><b>No telemetry, no API key.</b> It reuses your existing agent login; nothing phones home.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="wrap" style="text-align:center">
+    <h2>Get started</h2>
+    <p class="lead" style="margin-bottom:18px">Requires Node.js ≥ 20. Then one line:</p>
+    <div class="cmd">
+      <code>npm i -g skillmaxxing &amp;&amp; skillmaxxing plugin install</code>
+      <button onclick="copyCmd()">Copy</button>
+    </div>
+    <p class="alt" style="margin-top:14px">Codex: &nbsp;<span style="color:#cfe1ff">skillmaxxing plugin install --agent codex</span></p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <a href="https://github.com/Bennyoooo/skillmaxxing">GitHub</a>·
+    <a href="https://www.npmjs.com/package/skillmaxxing">npm</a>·
+    <a href="https://github.com/Bennyoooo/skillmaxxing/blob/main/LICENSE">MIT</a>
+    <div style="margin-top:10px">Built with Claude Code · inspired by NousResearch's Hermes</div>
+  </div>
+</footer>
+
+<script>
+function copyCmd(){
+  var t="npm i -g skillmaxxing && skillmaxxing plugin install";
+  navigator.clipboard.writeText(t).then(function(){
+    var b=document.getElementById('copybtn'); if(!b)return;
+    var o=b.textContent; b.textContent='Copied!'; setTimeout(function(){b.textContent=o;},1500);
+  });
+}
+</script>
+</body>
+</html>
