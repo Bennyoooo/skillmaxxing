@@ -26,11 +26,11 @@
   .rainbow{height:4px;background:var(--rainbow)}
   /* hero */
   header{text-align:center;padding:64px 0 40px}
-  header img{width:min(560px,86%);height:auto;image-rendering:pixelated}
+  .hero{display:block;margin:0 auto;width:min(560px,86%);height:auto;image-rendering:pixelated}
   h1{font-size:clamp(28px,5vw,44px);margin:26px 0 6px;letter-spacing:-.5px}
   .tag{color:var(--mut);font-size:clamp(15px,2.4vw,19px);max-width:620px;margin:0 auto}
   .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:18px 0 0}
-  .badges img{height:20px}
+  .badges img{height:20px;width:auto;image-rendering:auto}
   /* install */
   .cmd{display:flex;align-items:center;gap:10px;background:#0a0d14;border:1px solid var(--line);
     border-radius:12px;padding:14px 16px;max-width:560px;margin:26px auto 10px;font-family:var(--mono)}
@@ -75,7 +75,7 @@
 
 <header>
   <div class="wrap">
-    <img src="assets/hero.svg" alt="SKILLMAXXING" />
+    <img class="hero" src="assets/hero.svg" alt="SKILLMAXXING" />
     <h1>Self-evolving skills for your coding agent</h1>
     <p class="tag">Your agent writes and improves its own skills as it works — no command, no trigger. Inspired by the Hermes self-improvement loop, built for Claude Code &amp; Codex.</p>
 
