@@ -1,16 +1,32 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { acquireReflectorLock, releaseReflectorLock } from './locks.js';
 
 /**
  * Background reflection (Hermes "Layer B"): a forked, headless agent that reviews
  * the just-finished session and, if it finds reusable work or an outdated skill,
- * creates/improves exactly one skill — autonomously, no user trigger. Restricted
- * to skill tooling and guarded against recursion so it never re-triggers itself.
+ * creates/improves exactly one skill — autonomously, no user trigger.
+ *
+ * Safety guards (after the 0.1.0 runaway-CPU incident):
+ *  - a global single-flight lock so reflectors never stack (acquireReflectorLock),
+ *  - a hard wall-clock timeout that SIGKILLs a stuck reflector,
+ *  - `--max-turns` so the agent can't loop indefinitely,
+ *  - recursion guard via REFLECT_ENV.
+ * The watchdog (reflectRun) enforces all of these; the hook just spawns it.
  */
 
 export type ReflectAgent = 'claude' | 'codex';
 
 /** Env flag set on the spawned reflector so its own Stop hook no-ops (no recursion). */
 export const REFLECT_ENV = 'SKILLMAX_REFLECT';
+
+/** Hard wall-clock cap for a single reflector run. */
+export const REFLECT_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** Max agent turns for the reflector so it cannot loop. */
+export const REFLECT_MAX_TURNS = 25;
+
+const ALLOWED_TOOLS =
+  'Read,Glob,Grep,Write,Edit,Bash(skillmaxxing:*),Bash(skill-maxing:*),Bash(skillmax:*),Bash(npx:*)';
 
 export function isReflecting(): boolean {
   return process.env[REFLECT_ENV] === '1';
@@ -38,45 +54,88 @@ export function buildReflectionPrompt(transcriptPath: string): string {
   ].join('\n');
 }
 
-export interface ReflectOptions {
+/**
+ * Spawn the watchdog (this CLI's `plugin reflect-run`) detached so the Stop hook
+ * returns immediately. The watchdog owns the lock + timeout. Returns true if a
+ * process was launched.
+ */
+export function spawnReflector(opts: {
+  cli: string;
   agent: ReflectAgent;
   transcriptPath: string;
   cwd: string;
+}): boolean {
+  const cmd = `${opts.cli} plugin reflect-run --agent ${opts.agent} --transcript ${JSON.stringify(
+    opts.transcriptPath,
+  )}`;
+  try {
+    const child = spawn(cmd, {
+      cwd: opts.cwd,
+      env: process.env,
+      detached: true,
+      stdio: 'ignore',
+      shell: true, // cli may be a multi-token "npx -y skillmaxxing@x"
+    });
+    child.unref();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Spawn the reflector detached so the user's session is never blocked. Returns
- * true if a process was launched. Tools are restricted to skill management.
+ * Watchdog body: acquire the global lock, run the reflector agent under a hard
+ * timeout, then release the lock. Exits the process when done. If the lock is
+ * already held by a live reflector, exits immediately (single-flight).
  */
-export function runReflectionDetached(opts: ReflectOptions): boolean {
-  const prompt = buildReflectionPrompt(opts.transcriptPath);
+export function reflectRun(opts: { agent: ReflectAgent; transcriptPath: string }): void {
+  if (!opts.transcriptPath) {
+    process.exit(0);
+  }
+  if (!acquireReflectorLock()) {
+    process.exit(0); // another reflector is already running
+  }
+
   const env = { ...process.env, [REFLECT_ENV]: '1' };
+  const prompt = buildReflectionPrompt(opts.transcriptPath);
 
   let command: string;
   let args: string[];
   if (opts.agent === 'claude') {
     command = 'claude';
-    args = [
-      '-p',
-      prompt,
-      '--allowedTools',
-      'Read,Glob,Grep,Write,Edit,Bash(skillmaxxing:*),Bash(skill-maxing:*),Bash(skillmax:*),Bash(npx:*)',
-    ];
+    args = ['-p', prompt, '--max-turns', String(REFLECT_MAX_TURNS), '--allowedTools', ALLOWED_TOOLS];
   } else {
     command = 'codex';
     args = ['exec', prompt];
   }
 
+  let child: ChildProcess;
   try {
-    const child = spawn(command, args, {
-      cwd: opts.cwd,
-      env,
-      detached: true,
-      stdio: 'ignore',
-    });
-    child.unref();
-    return true;
+    child = spawn(command, args, { cwd: process.cwd(), env, stdio: 'ignore' });
   } catch {
-    return false; // reflector binary missing or spawn failed — never break the user's session
+    releaseReflectorLock();
+    process.exit(0);
+    return;
   }
+
+  const kill = setTimeout(() => {
+    try {
+      child.kill('SIGKILL');
+    } catch {
+      /* already gone */
+    }
+  }, REFLECT_TIMEOUT_MS);
+  const hardExit = setTimeout(() => {
+    releaseReflectorLock();
+    process.exit(0);
+  }, REFLECT_TIMEOUT_MS + 10_000);
+
+  const finish = (): void => {
+    clearTimeout(kill);
+    clearTimeout(hardExit);
+    releaseReflectorLock();
+    process.exit(0);
+  };
+  child.on('exit', finish);
+  child.on('error', finish);
 }
