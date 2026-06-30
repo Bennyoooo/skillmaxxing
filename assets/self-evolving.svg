@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
+  <defs>
+    <linearGradient id="rainbow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff4d4d"/><stop offset=".18" stop-color="#ff9f1c"/>
+      <stop offset=".36" stop-color="#ffd23f"/><stop offset=".54" stop-color="#2ec27e"/>
+      <stop offset=".72" stop-color="#22b8cf"/><stop offset=".86" stop-color="#4d79ff"/>
+      <stop offset="1" stop-color="#9b5de5"/>
+    </linearGradient>
+    <marker id="aRed" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#ff5a4d"/></marker>
+    <marker id="aGrn" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#2ec27e"/></marker>
+    <marker id="aCyn" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#22b8cf"/></marker>
+    <marker id="aVlt" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#9b5de5"/></marker>
+  </defs>
+
+  <rect width="1200" height="675" fill="#0c0f17"/>
+  <rect x="0" y="0" width="1200" height="5" fill="url(#rainbow)"/>
+
+  <!-- title -->
+  <text x="600" y="74" text-anchor="middle" font-size="46" font-weight="800" fill="url(#rainbow)" letter-spacing="1">Self-evolving</text>
+  <text x="600" y="106" text-anchor="middle" font-size="19" fill="#8b93a7">your coding agent gets better every session — automatically</text>
+
+  <!-- loop arcs (clockwise): center 600,390 r205 -->
+  <g fill="none" stroke-width="5" stroke-linecap="round">
+    <path d="M670,197 A205,205 0 0,1 793,320" stroke="#ff5a4d" marker-end="url(#aRed)"/>
+    <path d="M793,460 A205,205 0 0,1 670,583" stroke="#2ec27e" marker-end="url(#aGrn)"/>
+    <path d="M530,583 A205,205 0 0,1 407,460" stroke="#22b8cf" marker-end="url(#aCyn)"/>
+    <path d="M407,320 A205,205 0 0,1 530,197" stroke="#9b5de5" marker-end="url(#aVlt)"/>
+  </g>
+
+  <!-- center: growing skill stack -->
+  <g>
+    <rect x="513" y="360" width="150" height="52" rx="11" fill="#11151f" stroke="#1c2333" opacity=".55"/>
+    <rect x="519" y="366" width="150" height="52" rx="11" fill="#151a26" stroke="#222a3d" opacity=".85"/>
+    <rect x="525" y="372" width="150" height="52" rx="11" fill="#1b2233" stroke="#3a4570"/>
+    <path d="M545,408 L553,393 L561,408 z" fill="#2ec27e"/>
+    <text x="572" y="392" font-size="15.5" font-weight="700" fill="#e6ebf5">new skill</text>
+    <text x="572" y="409" font-size="11.5" fill="#8b93a7">trusted:false</text>
+  </g>
+
+  <!-- nodes N/E/S/W -->
+  <g>
+    <!-- N: Work -->
+    <rect x="495" y="146" width="210" height="80" rx="14" fill="#141926" stroke="#2a3450"/>
+    <text x="600" y="180" text-anchor="middle" font-size="19" font-weight="700" fill="#ffd23f">1 · WORK</text>
+    <text x="600" y="204" text-anchor="middle" font-size="13.5" fill="#9aa3b6">you + agent ship a task</text>
+    <!-- E: Reflect -->
+    <rect x="722" y="350" width="210" height="80" rx="14" fill="#141926" stroke="#2a3450"/>
+    <text x="827" y="384" text-anchor="middle" font-size="19" font-weight="700" fill="#2ee59a">2 · REFLECT</text>
+    <text x="827" y="408" text-anchor="middle" font-size="13.5" fill="#9aa3b6">review what just happened</text>
+    <!-- S: Crystallize -->
+    <rect x="495" y="554" width="210" height="80" rx="14" fill="#141926" stroke="#2a3450"/>
+    <text x="600" y="588" text-anchor="middle" font-size="19" font-weight="700" fill="#3fc9ff">3 · CRYSTALLIZE</text>
+    <text x="600" y="612" text-anchor="middle" font-size="13.5" fill="#9aa3b6">write / update a skill</text>
+    <!-- W: Level up -->
+    <rect x="268" y="350" width="210" height="80" rx="14" fill="#141926" stroke="#2a3450"/>
+    <text x="373" y="384" text-anchor="middle" font-size="19" font-weight="700" fill="#b98cff">4 · LEVEL UP</text>
+    <text x="373" y="408" text-anchor="middle" font-size="13.5" fill="#9aa3b6">next task starts smarter</text>
+  </g>
+
+  <!-- footer -->
+  <text x="600" y="656" text-anchor="middle" font-size="15" fill="#6c7488" font-family="ui-monospace,Menlo,monospace">skillmaxxing · github.com/Bennyoooo/skillmaxxing</text>
+</svg>
