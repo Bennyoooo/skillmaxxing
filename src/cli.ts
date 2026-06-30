@@ -84,7 +84,7 @@ Commands:
   remove <names...>   Remove installed skills
   update [names...]   Update installed skills to latest
   init [name]         Create a new skill template
-  doctor              Check agent integrations and skill health
+  doctor [--fix]      Check agent integrations + skill health (--fix cleans dangling skills)
 
 Options:
   -g, --global        Install/operate at global scope (default: project)
@@ -107,6 +107,7 @@ Examples:
   skillmaxxing discover "code review"          Find a skill by intent
   skillmaxxing list                            List all installed skills
   skillmaxxing doctor                          Check health
+  skillmaxxing doctor --fix                     Remove dangling skills + reconcile state
 `);
 }
 
@@ -302,7 +303,7 @@ async function main(): Promise<void> {
       }
 
       case 'doctor':
-        await doctor();
+        await doctor({ fix: flags.fix === true });
         break;
 
       default:

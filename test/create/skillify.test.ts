@@ -51,8 +51,21 @@ test('stageDraft writes SKILL.md, eval.yaml, scripts and sets staged state', asy
   assert.equal(store.loadState('made-skill')!.trusted, false);
 });
 
-test('stageDraft rejects an invalid eval scaffold (review A3)', async () => {
-  const res = await sk.stageDraft(draft({ name: 'bad-eval', eval: { skill: 'bad-eval', tasks: [] } }));
+test('stageDraft requires a non-empty eval scaffold (create->optimize seam)', async () => {
+  const missing = await sk.stageDraft(draft({ name: 'no-eval', eval: undefined }));
+  assert.equal(missing.ok, false);
+  assert.match(missing.detail!, /must ship an eval scaffold with at least one task/);
+
+  const empty = await sk.stageDraft(draft({ name: 'empty-eval', eval: { skill: 'empty-eval', tasks: [] } }));
+  assert.equal(empty.ok, false);
+  assert.match(empty.detail!, /must ship an eval scaffold with at least one task/);
+});
+
+test('stageDraft rejects a malformed (non-empty) eval scaffold (review A3)', async () => {
+  // exact scorer with no `expect` — has a task but fails validateManifest.
+  const res = await sk.stageDraft(
+    draft({ name: 'bad-eval', eval: { skill: 'bad-eval', tasks: [{ id: 't1', input: 'in', scorer: 'exact' }] } }),
+  );
   assert.equal(res.ok, false);
   assert.match(res.detail!, /eval scaffold invalid/);
 });

@@ -116,9 +116,17 @@ export function listStates(): SkillState[] {
   const out: SkillState[] = [];
   for (const file of names) {
     if (!file.endsWith('.json')) continue;
-    const id = file.slice(0, -'.json'.length);
-    const state = loadState(id);
-    if (state) out.push(state);
+    // The filename is already the hashed state key — re-hashing it (via
+    // loadState) would miss the file. Read the sidecar contents directly and
+    // trust the `id` it records.
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(STATE_DIR, file), 'utf-8'));
+      if (data && typeof data.name === 'string' && typeof data.id === 'string') {
+        out.push(data as SkillState);
+      }
+    } catch {
+      /* skip corrupt/unreadable sidecar */
+    }
   }
   return out;
 }
