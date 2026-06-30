@@ -165,7 +165,7 @@ Discovery and team sharing already exist as CLI commands (`skillmaxxing discover
 ```bash
 npm install
 npm run build      # tsc -> dist/
-npm test           # node:test, ~90 tests
+npm test           # node:test, 116 tests
 node scripts/gen-hero.mjs   # regenerate the hero
 ```
 
