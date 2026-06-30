@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import * as os from 'node:os';
 import type { AgentAdapter, Scope } from '../types.js';
 import { parseSource, sourceLabel } from '../source/parser.js';
 import { resolveSource, cleanupResolved } from '../source/resolver.js';
@@ -16,6 +17,20 @@ export interface InstallArgs {
   copy?: boolean;
   /** Overwrite an existing unmanaged skill of the same name (review C2/I6). */
   force?: boolean;
+}
+
+/**
+ * A source under a transient dir (a draft, an npx/git temp clone, or the OS temp
+ * dir) must never be SYMLINKED into an agent — the target gets cleaned up and the
+ * skill dangles. Force a copy for these so installed skills are self-contained.
+ */
+function isTransientSource(p: string): boolean {
+  const r = path.resolve(p);
+  return (
+    r.includes(`${path.sep}.skillmax${path.sep}drafts${path.sep}`) ||
+    r.includes('skillmax-clone-') ||
+    r.startsWith(path.resolve(os.tmpdir()) + path.sep)
+  );
 }
 
 export async function install(args: InstallArgs): Promise<void> {
@@ -69,7 +84,7 @@ export async function install(args: InstallArgs): Promise<void> {
         continue;
       }
 
-      const mode = symlinkOrCopy(skill.dir, destDir, args.copy);
+      const mode = symlinkOrCopy(skill.dir, destDir, args.copy || isTransientSource(skill.dir));
       log.success(`${agent.displayName} (${args.scope}): ${mode === 'symlink' ? 'linked' : 'copied'} → ${destDir}`);
     }
 

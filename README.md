@@ -134,6 +134,20 @@ skillmaxxing optimize <score|apply|gate|promote|revert>
 - **Reversible.** Promotions are atomic and every prior version is retained — revert any time.
 - **No surprise execution.** The background reflector writes skills; it does not run untrusted code or touch your project source.
 
+## 📊 Privacy & telemetry
+
+skillmaxxing collects **anonymous, aggregate** usage to know what to improve. You're asked once on first run (and can change your mind any time):
+
+```bash
+skillmaxxing telemetry status   # see what's on and where the config lives
+skillmaxxing telemetry off      # opt out
+skillmaxxing telemetry on       # opt back in
+```
+
+- **Collected:** a random install ID, version, OS, which agent, command names, and counts of skill create/optimize/promote/revert and error *types*.
+- **Never collected:** your code, file paths, prompts, skill contents, or anything personal.
+- **Always respected:** `DO_NOT_TRACK=1`, `CI`, and `SKILLMAX_TELEMETRY=off` disable it with no config needed. Nothing is sent from the background reflector's own CLI calls.
+
 ## 🗺️ Roadmap
 
 | Capability | Status |
@@ -151,7 +165,7 @@ Discovery and team sharing already exist as CLI commands (`skillmaxxing discover
 ```bash
 npm install
 npm run build      # tsc -> dist/
-npm test           # node:test, ~90 tests
+npm test           # node:test, 116 tests
 node scripts/gen-hero.mjs   # regenerate the hero
 ```
 

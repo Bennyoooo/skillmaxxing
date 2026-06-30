@@ -12,6 +12,7 @@ import { ensureDir, removeDir, fileExists } from '../util/fs.js';
 import { runSandboxed } from '../util/exec.js';
 import { ensureState, setLifecycle } from '../state/store.js';
 import { install } from '../commands/install.js';
+import { ALL_AGENTS } from '../agents/registry.js';
 
 const DRAFTS_DIR = path.join(os.homedir(), '.skillmax', 'drafts');
 
@@ -64,10 +65,19 @@ export async function stageDraft(
   const nameCheck = ensureValidName(draft.name);
   if (!nameCheck.ok) return { ok: false, dir: '', smokePassed: null, detail: nameCheck.reason };
 
-  if (draft.eval) {
-    const err = validateManifest(draft.eval);
-    if (err) return { ok: false, dir: '', smokePassed: null, detail: `eval scaffold invalid: ${err}` };
+  // A skill MUST ship a real eval scaffold so it is optimizable from birth — this
+  // closes the create->optimize seam (no more eval-less skills the loop can't grade).
+  if (!draft.eval || !Array.isArray(draft.eval.tasks) || draft.eval.tasks.length === 0) {
+    return {
+      ok: false,
+      dir: '',
+      smokePassed: null,
+      detail:
+        'a skill must ship an eval scaffold with at least one task — use an agent-judge task with a rubric for prose skills',
+    };
   }
+  const evalErr = validateManifest(draft.eval);
+  if (evalErr) return { ok: false, dir: '', smokePassed: null, detail: `eval scaffold invalid: ${evalErr}` };
 
   const dir = draftDir(draft.name);
   removeDir(dir);
@@ -93,9 +103,7 @@ export async function stageDraft(
     fs.writeFileSync(p, s.content);
   }
 
-  if (draft.eval) {
-    fs.writeFileSync(path.join(dir, 'eval.yaml'), stringifyYaml(draft.eval));
-  }
+  fs.writeFileSync(path.join(dir, 'eval.yaml'), stringifyYaml(draft.eval));
 
   const now = new Date().toISOString();
   ensureState({ name: draft.name, origin: 'created', lifecycle: 'staged' }, now);
@@ -148,13 +156,28 @@ export async function commitDraft(name: string, opts: CommitOptions): Promise<vo
     source: dir,
     scope: opts.scope,
     agents: opts.agents,
-    copy: opts.copy ?? true, // created skills default to copy (draft edits stay isolated)
+    copy: true, // ALWAYS copy — a committed skill must be self-contained, never a symlink into the draft
     force: opts.force,
   });
+  // Verify the skill actually landed before discarding the draft, so a failed
+  // install (e.g. no target agent) can never leave a dangling/lost skill.
+  if (!isInstalledLive(name, opts.scope)) {
+    throw new Error(`commit did not install "${name}" (no target agent?); draft kept at ${dir}`);
+  }
   const now = new Date().toISOString();
   ensureState({ name, origin: 'created', lifecycle: 'committed' }, now);
   setLifecycle(name, 'committed', now);
   removeDir(dir);
+}
+
+/** True if a live (non-dangling) SKILL.md for `name` exists under any agent at this scope. */
+function isInstalledLive(name: string, scope: Scope): boolean {
+  const projectDir = process.cwd();
+  for (const agent of ALL_AGENTS) {
+    const base = scope === 'global' ? agent.globalSkillsDir : path.join(projectDir, agent.projectSkillsDir);
+    if (fileExists(path.join(base, name, 'SKILL.md'))) return true;
+  }
+  return false;
 }
 
 /** List names of drafts staged but not yet committed. */
