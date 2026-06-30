@@ -11,6 +11,8 @@ import { remove } from './commands/remove.js';
 import { update } from './commands/update.js';
 import { init } from './commands/init.js';
 import { doctor } from './commands/doctor.js';
+import { telemetry, type TelemetryArgs } from './commands/telemetry.js';
+import * as tele from './telemetry/index.js';
 import { createRequire } from 'node:module';
 import * as log from './util/log.js';
 import type { Scope } from './types.js';
@@ -85,6 +87,7 @@ Commands:
   update [names...]   Update installed skills to latest
   init [name]         Create a new skill template
   doctor [--fix]      Check agent integrations + skill health (--fix cleans dangling skills)
+  telemetry <action>  Anonymous usage stats: on|off|status
 
 Options:
   -g, --global        Install/operate at global scope (default: project)
@@ -128,6 +131,17 @@ async function main(): Promise<void> {
   const scope: Scope = flags.global === true ? 'global' : 'project';
   const agentFlag = typeof flags.agent === 'string' ? flags.agent : undefined;
   const agents = agentFlag ? agentFlag.split(',') : undefined;
+
+  // Telemetry: never from the silent hook subcommands (they run constantly and
+  // non-interactively) nor from the telemetry command itself (toggling settings
+  // shouldn't trigger the consent prompt). init() handles first-run consent.
+  const HOOK_SUBCOMMANDS = new Set(['guidance', 'on-tool', 'on-stop', 'reflect-run']);
+  const isHookCall = command === 'plugin' && HOOK_SUBCOMMANDS.has(positional[1]);
+  const isTelemetryCmd = command === 'telemetry';
+  if (!isHookCall && !isTelemetryCmd) {
+    await tele.init(VERSION);
+    await tele.trackCommand(command, VERSION);
+  }
 
   try {
     switch (command) {
@@ -181,6 +195,8 @@ async function main(): Promise<void> {
           copy: flags.copy === true,
           force: flags.force === true,
         });
+        // A committed skill is a create event (also fires for autonomous reflector creates).
+        if (typeof flags.commit === 'string') await tele.trackSkill('create', VERSION);
         break;
       }
 
@@ -220,6 +236,8 @@ async function main(): Promise<void> {
           allowExec: flags['allow-exec'] === true,
           json: flags.json === true,
         });
+        if (action === 'promote') await tele.trackSkill('promote', VERSION);
+        else if (action === 'revert') await tele.trackSkill('revert', VERSION);
         break;
       }
 
@@ -306,12 +324,25 @@ async function main(): Promise<void> {
         await doctor({ fix: flags.fix === true });
         break;
 
+      case 'telemetry': {
+        const action = positional[1] as TelemetryArgs['action'];
+        telemetry({ action });
+        break;
+      }
+
       default:
         log.error(`Unknown command: ${command}`);
         printHelp();
         process.exit(1);
     }
   } catch (err) {
+    if (!isHookCall && !isTelemetryCmd) {
+      try {
+        await tele.trackError(command, err instanceof Error ? err.name : 'Error', VERSION);
+      } catch {
+        /* telemetry must never mask the real error */
+      }
+    }
     log.error(err instanceof Error ? err.message : String(err));
     process.exit(1);
   }
